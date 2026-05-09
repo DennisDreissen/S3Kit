@@ -1,0 +1,322 @@
+//
+//  S3ClientListObjectsTests.swift
+//  S3Kit
+//
+//  Created by Dennis Dreissen on 07/05/2026.
+//  Copyright © 2026 Dennis Dreissen
+//
+
+import Testing
+import Foundation
+@testable import S3Kit
+
+@Test
+func listObjects_validResponse() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockHTTPClient { request in
+        urlRequest = request
+
+        return (
+            listObjectsXML,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let data = try await client.listObjects(
+        bucket: "bucket"
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2") == true)
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+
+    #expect(data.isTruncated == false)
+    #expect(data.nextContinuationToken == nil)
+    #expect(data.contents.count == 2)
+    #expect(data.contents[0] == S3Object(
+        key: "image1.jpg",
+        eTag: "e5a8627dc082f11998d9526e6bc1c542",
+        size: 7195686,
+        lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
+    ))
+    #expect(data.contents[1] == S3Object(
+        key: "image2.jpg",
+        eTag: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+        size: 1234567,
+        lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
+    ))
+}
+
+@Test
+func listObjects_validResponseTrunecated() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockHTTPClient { request in
+        urlRequest = request
+
+        return (
+            listObjectsTrunecatedXML,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let data = try await client.listObjects(
+        bucket: "bucket"
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2") == true)
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+
+    #expect(data.isTruncated == true)
+    #expect(data.nextContinuationToken == "image1.jpg")
+    #expect(data.contents.count == 1)
+    #expect(data.contents[0] == S3Object(
+        key: "image1.jpg",
+        eTag: "e5a8627dc082f11998d9526e6bc1c542",
+        size: 7195686,
+        lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
+    ))
+}
+
+@Test
+func listObjects_validResponsePrefix() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockHTTPClient { request in
+        urlRequest = request
+
+        return (
+            listObjectsTrunecatedXML,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    _ = try await client.listObjects(
+        bucket: "bucket",
+        prefix: "abcd",
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2") == true)
+    #expect(urlRequest.url?.absoluteString.contains("prefix=abcd") == true)
+}
+
+@Test
+func listObjects_validResponseContinuationToken() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockHTTPClient { request in
+        urlRequest = request
+
+        return (
+            listObjectsTrunecatedXML,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    _ = try await client.listObjects(
+        bucket: "bucket",
+        continuationToken: "1234"
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2")  == true)
+    #expect(urlRequest.url?.absoluteString.contains("continuation-token=1234") == true)
+}
+
+@Test
+func listObjects_validResponseMaxKeys() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockHTTPClient { request in
+        urlRequest = request
+
+        return (
+            listObjectsTrunecatedXML,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    _ = try await client.listObjects(
+        bucket: "bucket",
+        maxKeys: 999
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/?list-type=2&max-keys=999")
+}
+
+@Test
+func listObjects_invalidEndpoint() async throws {
+    let httpClient = MockHTTPClient { request in
+        Issue.record("HTTP client should not have been called")
+        throw URLError(.unknown)
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: S3Error.invalidEndpoint("https://example local")) {
+        try await client.listObjects(
+            bucket: "bucket"
+        )
+    }
+}
+
+@Test
+func listObjects_invalidStatusCode() async throws {
+    let httpClient = MockHTTPClient { request in
+        return (
+            someErrorData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: S3Error.errorResponse(statusCode: 500, body: someErrorData)) {
+        try await client.listObjects(
+            bucket: "bucket"
+        )
+    }
+}
+
+@Test
+func listObjects_invalidResponseMissingETAGXML() async throws {
+    let httpClient = MockHTTPClient { request in
+        return (
+            listObjectsMissingETAGXML,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: DecodingError.self) {
+        try await client.listObjects(
+            bucket: "bucket"
+        )
+    }
+}
+
+private let listObjectsXML = """
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <Name>bucket</Name>
+    <Prefix></Prefix>
+    <MaxKeys>1000</MaxKeys>
+    <IsTruncated>false</IsTruncated>
+    <Contents>
+        <Key>image1.jpg</Key>
+        <ETag>&quot;e5a8627dc082f11998d9526e6bc1c542&quot;</ETag>
+        <Size>7195686</Size>
+        <LastModified>2026-05-01T18:30:59.962Z</LastModified>
+    </Contents>
+    <Contents>
+        <Key>image2.jpg</Key>
+        <ETag>&quot;a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6&quot;</ETag>
+        <Size>1234567</Size>
+        <LastModified>2026-05-01T18:30:59.962Z</LastModified>
+    </Contents>
+</ListBucketResult>
+""".data(using: .utf8)!
+
+private let listObjectsTrunecatedXML = """
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <Name>my-bucket</Name>
+    <Prefix>bucket</Prefix>
+    <MaxKeys>1</MaxKeys>
+    <IsTruncated>true</IsTruncated>
+    <Contents>
+        <Key>image1.jpg</Key>
+        <ETag>&quot;e5a8627dc082f11998d9526e6bc1c542&quot;</ETag>
+        <Size>7195686</Size>
+        <LastModified>2026-05-01T18:30:59.962Z</LastModified>
+    </Contents>
+    <NextContinuationToken>image1.jpg</NextContinuationToken>
+</ListBucketResult>
+""".data(using: .utf8)!
+
+private let listObjectsMissingETAGXML = """
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <Name>bucket</Name>
+    <Prefix></Prefix>
+    <MaxKeys>1000</MaxKeys>
+    <IsTruncated>false</IsTruncated>
+    <Contents>
+        <Key>image1.jpg</Key>
+        <Size>7195686</Size>
+        <LastModified>2026-05-01T18:30:59.962Z</LastModified>
+    </Contents>
+    <Contents>
+        <Key>image2.jpg</Key>
+        <Size>1234567</Size>
+        <LastModified>2026-05-01T18:30:59.962Z</LastModified>
+    </Contents>
+</ListBucketResult>
+""".data(using: .utf8)!
