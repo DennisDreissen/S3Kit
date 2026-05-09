@@ -38,6 +38,14 @@ dependencies: [
 
 ## Usage
 
+### Head bucket
+
+Check if a bucket exists and you're allowed to access it.
+
+ ```Swift
+try await client.headBucket(bucket: "bucket")
+ ```
+ 
 ### Head object
 
 Get metadata information about an object.

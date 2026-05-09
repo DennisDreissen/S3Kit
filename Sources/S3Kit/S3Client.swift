@@ -70,6 +70,25 @@ public struct S3Client: Sendable {
         self.httpClient = httpClient
     }
 
+    /// Checks if a bucket exists and caller has access to it.
+    /// - Parameters:
+    ///   - bucket: The name of the bucket.
+    /// - Throws: `S3Error.invalidEndpoint` if the endpoint is invalid.
+    /// - Throws: `S3Error.invalidURL` if the URL built to create the S3 request is not valid.
+    /// - Throws: `S3Error.invalidResponse` if the response from the server is not valid
+    /// - Throws: `S3Error.errorResponse` if the server returns a non-2xx status code.
+    /// - Throws: `URLError` if the network request fails.
+    public func headBucket(
+        bucket: String
+    ) async throws {
+        let request = try createRequest(
+            method: "HEAD",
+            bucket: bucket
+        )
+
+        try await executeRequest(request)
+    }
+
     /// Retrieves metadata for an object without downloading its contents.
     /// - Parameters:
     ///   - bucket: The name of the bucket containing the object.
@@ -345,7 +364,7 @@ private extension S3Client {
     func createRequest(
         method: String,
         bucket: String,
-        key: String,
+        key: String? = nil,
         queryItems: [URLQueryItem] = [],
         headers: HTTPHeaders = HTTPHeaders(),
         body: Data? = nil
@@ -356,14 +375,19 @@ private extension S3Client {
             throw S3Error.invalidEndpoint(endpoint)
         }
 
-        components.path = "/\(bucket)/\(key)"
+        if let key, !key.isEmpty {
+            components.path = "/\(bucket)/\(key)"
+        } else {
+            components.path = "/\(bucket)"
+        }
 
         if !queryItems.isEmpty {
             components.queryItems = queryItems
         }
 
         guard let url = components.url else {
-            throw S3Error.invalidURL("\(endpoint)/\(bucket)/\(key)")
+            let description = key.map { "\(endpoint)/\(bucket)/\($0)" } ?? "\(endpoint)/\(bucket)"
+            throw S3Error.invalidURL(description)
         }
 
         let signer = AWSSigner(

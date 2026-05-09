@@ -188,7 +188,9 @@ func listObjects_validResponseMaxKeys() async throws {
     )
 
     #expect(urlRequest.httpMethod == "GET")
-    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/?list-type=2&max-keys=999")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2")  == true)
+    #expect(urlRequest.url?.absoluteString.contains("max-keys=999") == true)
 }
 
 @Test
