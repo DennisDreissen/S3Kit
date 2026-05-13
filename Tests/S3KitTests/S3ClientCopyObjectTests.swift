@@ -10,6 +10,10 @@ import Testing
 import Foundation
 @testable import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 @Test
 func copyObject() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
@@ -39,10 +43,10 @@ func copyObject() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/destinationBucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-copy-source"] == "/sourceBucket/image1.jpg")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-copy-source") == "/sourceBucket/image1.jpg")
 }
 
 @Test
@@ -74,10 +78,10 @@ func copyObject_spaceEncodedKey() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/destinationBucket/some%20key.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-copy-source"] == "/sourceBucket/some%20key.jpg")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-copy-source") == "/sourceBucket/some%20key.jpg")
 }
 
 @Test

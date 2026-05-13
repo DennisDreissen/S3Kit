@@ -9,6 +9,10 @@
 import Foundation
 import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 final class MockS3HTTPClient: S3HTTPClient, Sendable {
 
     typealias Handler = @Sendable (URLRequest) throws -> (Data, URLResponse)

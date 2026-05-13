@@ -10,6 +10,10 @@ import Testing
 import Foundation
 @testable import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 @Test
 func headBucket() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
@@ -36,9 +40,9 @@ func headBucket() async throws {
 
     #expect(urlRequest.httpMethod == "HEAD")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 }
 
 @Test

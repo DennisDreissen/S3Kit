@@ -10,6 +10,10 @@ import Testing
 import Foundation
 @testable import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 @Test
 func createMultipartUpload() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
@@ -37,9 +41,9 @@ func createMultipartUpload() async throws {
 
     #expect(urlRequest.httpMethod == "POST")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploads=")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
     #expect(uploadId == "test-upload-id")
 }
@@ -72,10 +76,10 @@ func createMultipartUpload_withContentType() async throws {
 
     #expect(urlRequest.httpMethod == "POST")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploads=")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "some/content-type")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "some/content-type")
 
     #expect(uploadId == "test-upload-id")
 }
@@ -166,10 +170,10 @@ func uploadPart() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
     #expect(urlRequest.httpBody == someData)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
@@ -267,10 +271,10 @@ func completeMultipartUpload() async throws {
 
     #expect(urlRequest.httpMethod == "POST")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "application/xml")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/xml")
 
     #expect(urlRequest.httpBody == (
         "<CompleteMultipartUpload>" +
@@ -315,10 +319,10 @@ func completeMultipartUpload_multipleParts() async throws {
 
     #expect(urlRequest.httpMethod == "POST")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "application/xml")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/xml")
 
     #expect(urlRequest.httpBody == (
         "<CompleteMultipartUpload>" +
@@ -428,9 +432,9 @@ func abortMultipartUpload() async throws {
 
     #expect(urlRequest.httpMethod == "DELETE")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 }
 
 @Test

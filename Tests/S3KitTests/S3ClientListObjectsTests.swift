@@ -10,6 +10,10 @@ import Testing
 import Foundation
 @testable import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 @Test
 func listObjects() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
@@ -37,9 +41,9 @@ func listObjects() async throws {
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
     #expect(urlRequest.url?.absoluteString.contains("list-type=2") == true)
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
     #expect(data.isTruncated == false)
     #expect(data.nextContinuationToken == nil)
@@ -85,9 +89,9 @@ func listObjects_validResponseTrunecated() async throws {
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
     #expect(urlRequest.url?.absoluteString.contains("list-type=2") == true)
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
     #expect(data.isTruncated == true)
     #expect(data.nextContinuationToken == "image1.jpg")

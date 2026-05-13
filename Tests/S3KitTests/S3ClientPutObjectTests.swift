@@ -10,6 +10,10 @@ import Testing
 import Foundation
 @testable import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 @Test
 func putObject() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
@@ -38,11 +42,11 @@ func putObject() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Length"] == "\(someData.count)")
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == nil)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
     #expect(urlRequest.httpBody == someData)
 }
 
@@ -74,11 +78,11 @@ func putObject_signerAlgorithmSigV4a() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Length"] == "\(someData.count)")
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == nil)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
     #expect(urlRequest.httpBody == someData)
 }
 
@@ -111,11 +115,11 @@ func putObject_withContentType() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Length"] == "\(someData.count)")
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "image/jpeg")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "image/jpeg")
     #expect(urlRequest.httpBody == someData)
 }
 
@@ -147,11 +151,11 @@ func putObject_withEmptyData() async throws {
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Length"] == nil)
-    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == nil)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == nil)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
     #expect(urlRequest.httpBody == nil)
 }
 

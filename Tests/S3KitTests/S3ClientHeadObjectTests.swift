@@ -10,6 +10,10 @@ import Testing
 import Foundation
 @testable import S3Kit
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 @Test
 func headObject() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
@@ -42,10 +46,10 @@ func headObject() async throws {
 
     #expect(urlRequest.httpMethod == "HEAD")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.size == 7195686)
     #expect(data.lastModified == rfcDateFormatter.date(from: "Tue, 01 May 2000 18:30:59 GMT"))
@@ -83,9 +87,9 @@ func headObject_withoutContentType() async throws {
 
     #expect(urlRequest.httpMethod == "HEAD")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
-    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.size == 7195686)

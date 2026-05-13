@@ -9,6 +9,10 @@
 import Foundation
 import XMLCoder
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 public struct S3Client: Sendable {
 
     /// Endpoint URL of the S3 service.
@@ -32,19 +36,59 @@ public struct S3Client: Sendable {
     ///   - endpoint: The endpoint URL of the S3 service.
     ///   - region: The region. Not required for all S3-compatible providers.
     ///   - credentials: The credentials used to sign requests.
-    ///   - httpClient: The HTTPClient used to execute the requests. Defaults to URLSession.shared.
+    ///   - httpClient: The S3HTTPClient used to execute the requests. Defaults to URLSession.shared.
     public init(
         endpoint: URL,
         region: String? = nil,
         signerAlgorithm: S3SignerAlgorithm = .sigV4,
         credentials: S3CredentialsProvider,
-        httpClient: S3HTTPClient = URLSession.shared
+        httpClient: S3HTTPClient
     ) {
         self.endpoint = endpoint
         self.region = region
         self.signerAlgorithm = signerAlgorithm
         self.credentials = credentials
         self.httpClient = httpClient
+    }
+
+    /// Create an S3 client.
+    ///
+    /// - Parameters:
+    ///   - endpoint: The endpoint URL of the S3 service.
+    ///   - region: The region. Not required for all S3-compatible providers.
+    ///   - credentials: The credentials used to sign requests.
+    public init(
+        endpoint: URL,
+        region: String? = nil,
+        signerAlgorithm: S3SignerAlgorithm = .sigV4,
+        credentials: S3CredentialsProvider
+    ) {
+        self.endpoint = endpoint
+        self.region = region
+        self.signerAlgorithm = signerAlgorithm
+        self.credentials = credentials
+        self.httpClient = DefaultS3HTTPClient()
+    }
+
+    /// Create an S3 client.
+    ///
+    /// - Parameters:
+    ///   - endpoint: The endpoint URL of the S3 service.
+    ///   - region: The region. Not required for all S3-compatible providers.
+    ///   - credentials: The credentials used to sign requests.
+    ///   - urlSession: The URLSession used to execute the requests.
+    public init(
+        endpoint: URL,
+        region: String? = nil,
+        signerAlgorithm: S3SignerAlgorithm = .sigV4,
+        credentials: S3CredentialsProvider,
+        urlSession: URLSession
+    ) {
+        self.endpoint = endpoint
+        self.region = region
+        self.signerAlgorithm = signerAlgorithm
+        self.credentials = credentials
+        self.httpClient = DefaultS3HTTPClient(session: urlSession)
     }
 
     /// Check if a bucket exists and caller has access to it.
