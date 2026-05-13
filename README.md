@@ -2,23 +2,14 @@
 
 This is an S3 client for interacting with AWS S3 and S3-compatible storage services. This library is intentionally limited in scope as a lightweight alternative to larger SDKs like [Soto](https://github.com/soto-project/soto) or the [AWS SDK for Swift.](https://github.com/awslabs/aws-sdk-swift) Feature requests and pull requests are welcome, but please keep the minimal scope in mind.
 
- ```Swift
-// AWS S3
+ ```swift
 let client = S3Client(
-    region: "eu-west-3",
-    credentials: StaticCredential(
-        accessKeyId: "1234",
-        secretAccessKey: "abcd"
-    )
-)
-
-// S3-compatible
-let client = S3Client(
-    endpoint: "https://s3.compatible.service.com",
-    credentials: StaticCredential(
-        accessKeyId: "1234",
-        secretAccessKey: "abcd"
-    )
+    endpoint: URL(string: "https://s3.compatible.service.com")!,
+    region: "region",
+    credentials: S3Credentials(
+        accessKeyId: "1234",
+        secretAccessKey: "abcd"
+    )
 )
 
 try await client.putObject(
@@ -30,7 +21,7 @@ try await client.putObject(
  ```
 ## Setup using SPM
 
- ```Swift
+ ```swift
 dependencies: [
     .package(url: "https://github.com/DennisDreissen/S3Kit.git", .upToNextMajor(from: "1.0.0"))
 ]
@@ -42,7 +33,7 @@ dependencies: [
 
 Check if a bucket exists and you're allowed to access it.
 
- ```Swift
+ ```swift
 try await client.headBucket(bucket: "bucket")
  ```
  
@@ -50,7 +41,7 @@ try await client.headBucket(bucket: "bucket")
 
 Get metadata information about an object.
 
- ```Swift
+ ```swift
 let metadata = try await client.headObject(bucket: "bucket", key: "example.jpg")
  ```
 
@@ -80,35 +71,102 @@ let data = try await client.getObject(bucket: "bucket", key: "example.jpg")
 ### Put object
 
 ```swift
-let data = try await client.putObject(
+try await client.putObject(
     data: Data(),
     bucket: "bucket",
     key: "example.jpg",
     contentType: "image/jpeg"
- )
+)
 ```
 
-Add an object to a bucket using streamed data. Optionally a part size can be provided. The default part size is 5MB, for most providers this is the minimum allowed size except for the last part. The optional progress handler is called after uploading each part and contains the current total uploaded bytes.
+### Multipart object uploads
+
+Initiate a new multipart upload. The `uploadId` should be passed to all other multipart related calls.
 
 ```swift
-let data = try await client.putObjectMultipart(
-    stream: AsyncThrowingStream(),
+let uploadId = try await client.createMultipartUpload(
     bucket: "bucket",
     key: "example.jpg",
-    partSize: 5 * 1024 * 1024,
     contentType: "image/jpeg"
-) { totalBytesUploaded in
+)
+```
 
-}
+Upload a part. The returned `objectPart` from all parts uploaded should be passed to the `completeMultipartUpload` method.
+
+```swift
+let objectPart = try await client.uploadPart(
+    data: Data(),
+    bucket: "bucket",
+    key: "example.jpg",
+    uploadId: "uploadId",
+    partNumber: 1
+)
+```
+
+Complete a multipart upload. Pass all the parts received from the `uploadPart` methods. The order of the parts in the array does not matter, parts will be sorted based on their `partNumber` before being sent to the S3 service.
+
+```swift
+try await client.completeMultipartUpload(
+    bucket: "bucket",
+    key: "example.jpg",
+    uploadId: "uploadId",
+    parts: [objectPart1, objectPart2]
+)
+```
+
+Abort a multipart upload. This should be called to cancel an initiated multipart upload. Make sure to call this method when receiving an error on `uploadPart` or `completeMultipartUpload` to let the server know to clean up remaining state for the multipart upload.
+
+```swift
+try await client.abortMultipartUpload(
+    bucket: "bucket",
+    key: "example.jpg",
+    uploadId: "uploadId"
+)
+```
+
+### Copy object
+
+```swift
+try await client.copyObject(
+    sourceBucket: "bucket01",
+    sourceKey: "example.jpg",
+    bucket: "bucket02",
+    key: "example.jpg"
+)
 ```
 
 ### Delete object
 
 ```swift
-let data = try await client.deleteObject(
+try await client.deleteObject(
     bucket: "bucket",
     key: "example.jpg"
- )
+)
+```
+
+### Errors
+
+```swift
+public enum S3Error: Error, Sendable, Equatable {
+
+    /// The URL built to create the S3 request is not valid.
+    case invalidURL
+
+    /// The response from the server is not valid.
+    case invalidResponse
+
+    /// A header expected in the response is missing. Contains the missing header key.
+    case missingResponseHeader(String)
+
+    /// Encoding the request body failed.
+    case encodingRequestFailed
+
+    /// Decoding the response body failed.
+    case decodingResponseFailed
+
+    /// The server returned an error. Contains the status code and an optional error data, not all operations return error data.
+    case responseError(statusCode: Int, errorData: S3ErrorData?)
+}
 ```
 
 ## Acknowledgements
