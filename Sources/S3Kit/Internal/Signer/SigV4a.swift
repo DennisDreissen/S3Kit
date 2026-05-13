@@ -15,11 +15,11 @@
 import Crypto
 import Foundation
 
-package struct SigV4aKeyPair {
+struct SigV4aKeyPair {
 
-    package let key: P256.Signing.PrivateKey
+    let key: P256.Signing.PrivateKey
 
-    package init(credential: some Credential) {
+    init(credential: Credential) {
         let secretBuffer = Self.makeSecretBuffer(credential: credential)
         let secretKey = SymmetricKey(data: secretBuffer)
 
@@ -48,7 +48,7 @@ package struct SigV4aKeyPair {
         fatalError("Throw error here")
     }
 
-    package func sign(_ string: String) throws -> String {
+    func sign(_ string: String) throws -> String {
         // we want to be explcit about using SHA256 as the hash method
         let digest = SHA256.hash(data: Data(string.utf8))
         let signature = try self.key.signature(for: digest)
@@ -60,7 +60,7 @@ package struct SigV4aKeyPair {
 
     private static var KEY_DERIVATION_COUNTER_RANGE: ClosedRange<UInt8> { 1...254 }
 
-    static func makeFixedInputBuffer(credential: some Credential, counter: UInt8) -> [UInt8] {
+    static func makeFixedInputBuffer(credential: Credential, counter: UInt8) -> [UInt8] {
         guard Self.KEY_DERIVATION_COUNTER_RANGE.contains(counter) else {
             fatalError("counter must be in range: \(Self.KEY_DERIVATION_COUNTER_RANGE)")
         }
@@ -79,7 +79,7 @@ package struct SigV4aKeyPair {
 
     private static let SECRET_BUFFER_PREFIX = "AWS4A"
 
-    static func makeSecretBuffer(credential: some Credential) -> [UInt8] {
+    static func makeSecretBuffer(credential: Credential) -> [UInt8] {
         var result = [UInt8]()
         result.reserveCapacity(credential.secretAccessKey.utf8.count + self.SECRET_BUFFER_PREFIX.utf8.count)
         result.append(contentsOf: self.SECRET_BUFFER_PREFIX.utf8)
@@ -87,7 +87,7 @@ package struct SigV4aKeyPair {
         return result
     }
 
-    package static func compareConstantTime(lhs: [UInt8], rhs: [UInt8]) -> Int8 {
+    static func compareConstantTime(lhs: [UInt8], rhs: [UInt8]) -> Int8 {
         guard lhs.count == rhs.count else {
             fatalError("Input arrays must be of same size")
         }
@@ -107,7 +107,7 @@ package struct SigV4aKeyPair {
         return Int8(gt) + Int8(gt) + Int8(eq) - 1
     }
 
-    package enum DerivedKeyResult {
+    enum DerivedKeyResult {
         case success(P256.Signing.PrivateKey)
         case nextCounter
     }
@@ -119,7 +119,7 @@ package struct SigV4aKeyPair {
         0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x4F,
     ]
 
-    package static func makeDerivedKey(bytes: [UInt8]) throws -> DerivedKeyResult {
+    static func makeDerivedKey(bytes: [UInt8]) throws -> DerivedKeyResult {
         assert(bytes.count == 32)
 
         let comparisonResult = Self.compareConstantTime(lhs: bytes, rhs: Self.s_n_minus_2)
@@ -146,7 +146,7 @@ extension [UInt8] {
         }
     }
 
-    package consuming func addingOne() -> [UInt8] {
+    consuming func addingOne() -> [UInt8] {
         var new = consume self
         new.addOne()
         return new

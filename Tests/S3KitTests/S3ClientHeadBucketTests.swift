@@ -11,10 +11,10 @@ import Foundation
 @testable import S3Kit
 
 @Test
-func headBucket_validResponse() async throws {
+func headBucket() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
@@ -42,27 +42,8 @@ func headBucket_validResponse() async throws {
 }
 
 @Test
-func headBucket_invalidEndpoint() async throws {
-    let httpClient = MockHTTPClient { request in
-        Issue.record("HTTP client should not have been called")
-        throw URLError(.unknown)
-    }
-
-    let client = createS3Client(
-        endpoint: "https://example local",
-        httpClient: httpClient
-    )
-
-    await #expect(throws: S3Error.invalidEndpoint("https://example local")) {
-        try await client.headBucket(
-            bucket: "bucket",
-        )
-    }
-}
-
-@Test
 func headBucket_invalidStatusCode() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
             HTTPURLResponse(
@@ -79,7 +60,7 @@ func headBucket_invalidStatusCode() async throws {
         httpClient: httpClient
     )
 
-    await #expect(throws: S3Error.errorResponse(statusCode: 500, body: someErrorData)) {
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
         try await client.headBucket(
             bucket: "bucket",
         )

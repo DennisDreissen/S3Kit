@@ -15,6 +15,10 @@
 import Crypto
 import Foundation
 
+typealias HTTPMethod = String
+typealias TimeAmount = TimeInterval
+typealias Credential = S3CredentialsProvider
+
 /// Amazon Web Services V4 Signer
 struct AWSSigner: Sendable {
 
@@ -135,14 +139,14 @@ struct AWSSigner: Sendable {
         let dateString = AWSSigner.timestamp(date)
         var headers = headers
         // add date, host, sha256 and if available security token headers
-        headers.replaceOrAdd(name: "host", value: Self.hostname(from: url))
-        headers.replaceOrAdd(name: "x-amz-date", value: dateString)
-        headers.replaceOrAdd(name: "x-amz-content-sha256", value: bodyHash)
+        headers["host"] = Self.hostname(from: url)
+        headers["x-amz-date"] = dateString
+        headers["x-amz-content-sha256"] = bodyHash
         if algorithm.base == .sigV4a {
-            headers.replaceOrAdd(name: "x-amz-region-set", value: self.region)
+            headers["x-amz-region-set"] = self.region
         }
         if !omitSecurityToken, let sessionToken = credentials.sessionToken {
-            headers.replaceOrAdd(name: "x-amz-security-token", value: sessionToken)
+            headers["x-amz-security-token"] = sessionToken
         }
         // construct signing data. Do this after adding the headers as it uses data from the headers
         let signingData = AWSSigner.SigningData(
@@ -173,10 +177,10 @@ struct AWSSigner: Sendable {
             """
 
         // add Authorization header
-        headers.replaceOrAdd(name: "authorization", value: authorization)
+        headers["authorization"] = authorization
         // now we have signed the request we can add the security token if required
         if omitSecurityToken, let sessionToken = credentials.sessionToken {
-            headers.replaceOrAdd(name: "x-amz-security-token", value: sessionToken)
+            headers["x-amz-security-token"] = sessionToken
         }
 
         return headers
@@ -202,9 +206,9 @@ struct AWSSigner: Sendable {
         date: Date = Date()
     ) -> URL {
         var headers = headers
-        headers.replaceOrAdd(name: "host", value: Self.hostname(from: url))
+        headers["host"] = Self.hostname(from: url)
         if algorithm.base == .sigV4a {
-            headers.replaceOrAdd(name: "X-Amz-Region-Set", value: self.region)
+            headers["X-Amz-Region-Set"] = self.region
         }
         // Create signing data
         var signingData = AWSSigner.SigningData(url: url, method: method, headers: headers, body: body, date: AWSSigner.timestamp(date), signer: self)
@@ -297,14 +301,14 @@ struct AWSSigner: Sendable {
         let dateString = AWSSigner.timestamp(date)
         var headers = headers
         // add date, host, sha256 and if available security token headers
-        headers.add(name: "host", value: Self.hostname(from: url))
-        headers.add(name: "x-amz-date", value: dateString)
-        headers.add(name: "x-amz-content-sha256", value: bodyHash)
+        headers["host"] = Self.hostname(from: url)
+        headers["x-amz-date"] = dateString
+        headers["x-amz-content-sha256"] = bodyHash
         if let sessionToken = credentials.sessionToken {
-            headers.add(name: "x-amz-security-token", value: sessionToken)
+            headers["x-amz-security-token"] = sessionToken
         }
         // remove content-length header
-        headers.remove(name: "content-length")
+        headers["content-length"] = nil
 
         // construct signing data. Do this after adding the headers as it uses data from the headers
         let signingData = AWSSigner.SigningData(url: url, method: method, headers: headers, bodyHash: bodyHash, date: dateString, signer: self)
@@ -318,7 +322,7 @@ struct AWSSigner: Sendable {
             + "SignedHeaders=\(signingData.signedHeaders), " + "Signature=\(signature)"
 
         // add Authorization header
-        headers.add(name: "authorization", value: authorization)
+        headers["authorization"] = authorization
 
         return (headers: headers, signingData: chunkedSigningData)
     }

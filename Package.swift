@@ -29,6 +29,11 @@ let package = Package(
             dependencies: ["S3Kit"],
             path: "Tests/S3KitTests",
         ),
+        .testTarget(
+            name: "S3KitIntegrationTests",
+            dependencies: ["S3Kit"],
+            path: "Tests/S3KitIntegrationTests",
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

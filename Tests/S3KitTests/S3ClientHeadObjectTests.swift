@@ -11,10 +11,10 @@ import Foundation
 @testable import S3Kit
 
 @Test
-func headObject_validResponse() async throws {
+func headObject() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
@@ -46,15 +46,56 @@ func headObject_validResponse() async throws {
     #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
     #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
     
-    #expect(data.eTag == "e5a8627dc082f11998d9526e6bc1c542")
+    #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.size == 7195686)
     #expect(data.lastModified == rfcDateFormatter.date(from: "Tue, 01 May 2000 18:30:59 GMT"))
     #expect(data.contentType == "image/jpeg")
 }
 
 @Test
+func headObject_withoutContentType() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            Data(),
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                    "Content-Length": "7195686",
+                    "Last-Modified": "Tue, 01 May 2000 18:30:59 GMT"
+                ]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let data = try await client.headObject(
+        bucket: "bucket",
+        key: "image1.jpg"
+    )
+
+    #expect(urlRequest.httpMethod == "HEAD")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+
+    #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
+    #expect(data.size == 7195686)
+    #expect(data.lastModified == rfcDateFormatter.date(from: "Tue, 01 May 2000 18:30:59 GMT"))
+    #expect(data.contentType == nil)
+}
+
+@Test
 func headObject_missingETagHeader() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
             HTTPURLResponse(
@@ -72,7 +113,7 @@ func headObject_missingETagHeader() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    await #expect(throws: S3Error.missingHeader("ETag")) {
+    await #expect(throws: S3Error.missingResponseHeader("ETag")) {
         try await client.headObject(
             bucket: "bucket",
             key: "image1.jpg"
@@ -82,7 +123,7 @@ func headObject_missingETagHeader() async throws {
 
 @Test
 func headObject_missingContentLengthHeader() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
             HTTPURLResponse(
@@ -100,7 +141,36 @@ func headObject_missingContentLengthHeader() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    await #expect(throws: S3Error.missingHeader("Content-Length")) {
+    await #expect(throws: S3Error.missingResponseHeader("Content-Length")) {
+        try await client.headObject(
+            bucket: "bucket",
+            key: "image1.jpg"
+        )
+    }
+}
+
+@Test
+func headObject_invalidContentLengthHeader() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            Data(),
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                    "Content-Length": "abc",
+                    "Last-Modified": "Tue, 01 May 2000 18:30:59 GMT",
+                    "Content-Type": "image/jpeg"
+                ]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    await #expect(throws: S3Error.missingResponseHeader("Content-Length")) {
         try await client.headObject(
             bucket: "bucket",
             key: "image1.jpg"
@@ -110,7 +180,7 @@ func headObject_missingContentLengthHeader() async throws {
 
 @Test
 func headObject_missingLastModifiedHeader() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
             HTTPURLResponse(
@@ -128,7 +198,7 @@ func headObject_missingLastModifiedHeader() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    await #expect(throws: S3Error.missingHeader("Last-Modified")) {
+    await #expect(throws: S3Error.missingResponseHeader("Last-Modified")) {
         try await client.headObject(
             bucket: "bucket",
             key: "image1.jpg"
@@ -137,18 +207,27 @@ func headObject_missingLastModifiedHeader() async throws {
 }
 
 @Test
-func headObject_invalidEndpoint() async throws {
-    let httpClient = MockHTTPClient { request in
-        Issue.record("HTTP client should not have been called")
-        throw URLError(.unknown)
+func headObject_invalidLastModifiedHeader() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            Data(),
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                    "Content-Length": "7195686",
+                    "Last-Modified": "not-a-date",
+                    "Content-Type": "image/jpeg"
+                ]
+            )!
+        )
     }
 
-    let client = createS3Client(
-        endpoint: "https://example local",
-        httpClient: httpClient
-    )
+    let client = createS3Client(httpClient: httpClient)
 
-    await #expect(throws: S3Error.invalidEndpoint("https://example local")) {
+    await #expect(throws: S3Error.missingResponseHeader("Last-Modified")) {
         try await client.headObject(
             bucket: "bucket",
             key: "image1.jpg"
@@ -158,7 +237,7 @@ func headObject_invalidEndpoint() async throws {
 
 @Test
 func headObject_invalidStatusCode() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
             HTTPURLResponse(
@@ -180,7 +259,7 @@ func headObject_invalidStatusCode() async throws {
         httpClient: httpClient
     )
 
-    await #expect(throws: S3Error.errorResponse(statusCode: 500, body: someErrorData)) {
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
         try await client.headObject(
             bucket: "bucket",
             key: "image1.jpg"

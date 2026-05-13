@@ -1,5 +1,5 @@
 //
-//  HTTPClient.swift
+//  S3HTTPClient.swift
 //  S3Kit
 //
 //  Created by Dennis Dreissen on 07/05/2026.
@@ -8,9 +8,9 @@
 
 import Foundation
 
-public protocol HTTPClient: Sendable {
+public protocol S3HTTPClient: Sendable {
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
-extension URLSession: HTTPClient {}
+extension URLSession: S3HTTPClient {}

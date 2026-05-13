@@ -21,4 +21,11 @@ public struct S3ObjectMetadata: Sendable, Equatable {
 
     /// The MIME type of the object.
     public let contentType: String?
+
+    public init(eTag: String, size: Int, lastModified: Date, contentType: String? = nil) {
+        self.eTag = eTag
+        self.size = size
+        self.lastModified = lastModified
+        self.contentType = contentType
+    }
 }

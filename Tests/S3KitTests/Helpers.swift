@@ -10,7 +10,20 @@ import Foundation
 import S3Kit
 
 let someData = "some data".data(using: .utf8)!
-let someErrorData = "error data".data(using: .utf8)!
+let someErrorData = """
+<?xml version="1.0" encoding="UTF-8"?>
+<Error>
+    <Code>ExmpleCode</Code>
+    <Message>ExampleMessage</Message>
+    <RequestId>ExampleRequestID</RequestId>
+</Error>
+""".data(using: .utf8)!
+
+let someError = S3ErrorData(
+    code: "ExmpleCode",
+    message: "ExampleMessage",
+    requestId: "ExampleRequestID"
+)
 
 let rfcDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
@@ -31,14 +44,16 @@ let iso8601DateFormatter: DateFormatter = {
 func createS3Client(
     endpoint: String = "https://example.local",
     region: String = "",
+    signerAlgorithm: S3SignerAlgorithm = .sigV4,
     accessKeyId: String = "accessKeyId",
     secretAccessKey: String = "secretAccessKey",
-    httpClient: MockHTTPClient
+    httpClient: MockS3HTTPClient
 ) -> S3Client {
     S3Client(
-        endpoint: endpoint,
+        endpoint: URL(string: endpoint)!,
         region: region,
-        credentials: StaticCredential(
+        signerAlgorithm: signerAlgorithm,
+        credentials: S3Credentials(
             accessKeyId: accessKeyId,
             secretAccessKey: secretAccessKey
         ),

@@ -15,24 +15,24 @@
 import Foundation
 
 @usableFromInline
-package struct HexEncoding<Base: Sequence> where Base.Element == UInt8 {
+struct HexEncoding<Base: Sequence> where Base.Element == UInt8 {
     @usableFromInline
     var base: Base
 
     @inlinable
-    package init(_ base: Base) {
+    init(_ base: Base) {
         self.base = base
     }
 }
 
 extension HexEncoding: Sequence {
     @usableFromInline
-    package typealias Element = UInt8
+    typealias Element = UInt8
 
     @usableFromInline
-    package struct Iterator: IteratorProtocol {
+    struct Iterator: IteratorProtocol {
         @usableFromInline
-        package typealias Element = UInt8
+        typealias Element = UInt8
 
         @usableFromInline
         var base: Base.Iterator
@@ -46,7 +46,7 @@ extension HexEncoding: Sequence {
         }
 
         @inlinable
-        package mutating func next() -> UInt8? {
+        mutating func next() -> UInt8? {
             switch self._next {
             case .none:
                 guard let underlying = self.base.next() else {
@@ -65,14 +65,14 @@ extension HexEncoding: Sequence {
     }
 
     @inlinable
-    package func makeIterator() -> Iterator {
+    func makeIterator() -> Iterator {
         Iterator(base: self.base.makeIterator())
     }
 }
 
 extension HexEncoding: Collection where Base: Collection {
     @usableFromInline
-    package struct Index: Comparable {
+    struct Index: Comparable {
         @inlinable
         init(base: Base.Index, first: Bool) {
             self.base = base
@@ -80,7 +80,7 @@ extension HexEncoding: Collection where Base: Collection {
         }
 
         @inlinable
-        package static func < (lhs: HexEncoding<Base>.Index, rhs: HexEncoding<Base>.Index) -> Bool {
+        static func < (lhs: HexEncoding<Base>.Index, rhs: HexEncoding<Base>.Index) -> Bool {
             if lhs.base < rhs.base {
                 return true
             } else if lhs.base > rhs.base {
@@ -99,17 +99,17 @@ extension HexEncoding: Collection where Base: Collection {
     }
 
     @inlinable
-    package var startIndex: Index {
+    var startIndex: Index {
         Index(base: self.base.startIndex, first: true)
     }
 
     @inlinable
-    package var endIndex: Index {
+    var endIndex: Index {
         Index(base: self.base.endIndex, first: true)
     }
 
     @inlinable
-    package func index(after i: Index) -> Index {
+    func index(after i: Index) -> Index {
         if i.first {
             return Index(base: i.base, first: false)
         } else {
@@ -118,7 +118,7 @@ extension HexEncoding: Collection where Base: Collection {
     }
 
     @inlinable
-    package subscript(position: Index) -> UInt8 {
+    subscript(position: Index) -> UInt8 {
         let value = self.base[position.base]
         let base16 = position.first ? value >> 4 : value & 0x0F
         return base16.makeBase16Ascii()

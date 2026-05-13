@@ -10,18 +10,21 @@ import Foundation
 
 public enum S3Error: Error, Sendable, Equatable {
 
-    /// The endpoint is not valid. Contains the invalid endpoint.
-    case invalidEndpoint(String)
-
-    /// The URL built to create the S3 request is not valid. Contains the invalid URL.
-    case invalidURL(String)
+    /// The URL built to create the S3 request is not valid.
+    case invalidURL
 
     /// The response from the server is not valid.
     case invalidResponse
 
-    /// A headers expected in the response is missing. Contains the missing header key.
-    case missingHeader(String)
+    /// A header expected in the response is missing. Contains the missing header key.
+    case missingResponseHeader(String)
 
-    /// The response from the server returned a status code outside the 2xx range. Contains the returned status code and the response body.
-    case errorResponse(statusCode: Int, body: Data)
+    /// Encoding the request body failed.
+    case encodingRequestFailed
+
+    /// Decoding the response body failed.
+    case decodingResponseFailed
+
+    /// The server returned an error. Contains the status code and an optional error data, not all operations return error data.
+    case responseError(statusCode: Int, errorData: S3ErrorData?)
 }

@@ -11,14 +11,14 @@ import Foundation
 @testable import S3Kit
 
 @Test
-func listObjects_validResponse() async throws {
+func listObjects() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
-            listObjectsXML,
+            listObjectsData,
             HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -46,13 +46,13 @@ func listObjects_validResponse() async throws {
     #expect(data.contents.count == 2)
     #expect(data.contents[0] == S3Object(
         key: "image1.jpg",
-        eTag: "e5a8627dc082f11998d9526e6bc1c542",
+        eTag: "\"e5a8627dc082f11998d9526e6bc1c542\"",
         size: 7195686,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
     #expect(data.contents[1] == S3Object(
         key: "image2.jpg",
-        eTag: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+        eTag: "\"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\"",
         size: 1234567,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
@@ -62,11 +62,11 @@ func listObjects_validResponse() async throws {
 func listObjects_validResponseTrunecated() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
-            listObjectsTrunecatedXML,
+            listObjectsTrunecatedData,
             HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -94,7 +94,7 @@ func listObjects_validResponseTrunecated() async throws {
     #expect(data.contents.count == 1)
     #expect(data.contents[0] == S3Object(
         key: "image1.jpg",
-        eTag: "e5a8627dc082f11998d9526e6bc1c542",
+        eTag: "\"e5a8627dc082f11998d9526e6bc1c542\"",
         size: 7195686,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
@@ -104,11 +104,11 @@ func listObjects_validResponseTrunecated() async throws {
 func listObjects_validResponsePrefix() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
-            listObjectsTrunecatedXML,
+            listObjectsTrunecatedData,
             HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -135,11 +135,11 @@ func listObjects_validResponsePrefix() async throws {
 func listObjects_validResponseContinuationToken() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
-            listObjectsTrunecatedXML,
+            listObjectsTrunecatedData,
             HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -166,11 +166,11 @@ func listObjects_validResponseContinuationToken() async throws {
 func listObjects_validResponseMaxKeys() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
         return (
-            listObjectsTrunecatedXML,
+            listObjectsTrunecatedData,
             HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -194,27 +194,76 @@ func listObjects_validResponseMaxKeys() async throws {
 }
 
 @Test
-func listObjects_invalidEndpoint() async throws {
-    let httpClient = MockHTTPClient { request in
-        Issue.record("HTTP client should not have been called")
-        throw URLError(.unknown)
-    }
+func listObjects_allOptions() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let client = createS3Client(
-        endpoint: "https://example local",
-        httpClient: httpClient
-    )
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
 
-    await #expect(throws: S3Error.invalidEndpoint("https://example local")) {
-        try await client.listObjects(
-            bucket: "bucket"
+        return (
+            listObjectsTrunecatedData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
         )
     }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    _ = try await client.listObjects(
+        bucket: "bucket",
+        prefix: "abcd",
+        continuationToken: "1234",
+        maxKeys: 999
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2")  == true)
+    #expect(urlRequest.url?.absoluteString.contains("prefix=abcd") == true)
+    #expect(urlRequest.url?.absoluteString.contains("continuation-token=1234") == true)
+    #expect(urlRequest.url?.absoluteString.contains("max-keys=999") == true)
+}
+
+@Test
+func listObjects_emptyList() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            listObjectsEmptyListData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let data = try await client.listObjects(
+        bucket: "bucket"
+    )
+
+    #expect(urlRequest.httpMethod == "GET")
+    #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
+    #expect(urlRequest.url?.absoluteString.contains("list-type=2")  == true)
+
+    #expect(data.isTruncated == false)
+    #expect(data.nextContinuationToken == nil)
+    #expect(data.contents.isEmpty)
 }
 
 @Test
 func listObjects_invalidStatusCode() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
             HTTPURLResponse(
@@ -231,7 +280,7 @@ func listObjects_invalidStatusCode() async throws {
         httpClient: httpClient
     )
 
-    await #expect(throws: S3Error.errorResponse(statusCode: 500, body: someErrorData)) {
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
         try await client.listObjects(
             bucket: "bucket"
         )
@@ -240,9 +289,9 @@ func listObjects_invalidStatusCode() async throws {
 
 @Test
 func listObjects_invalidResponseMissingETAGXML() async throws {
-    let httpClient = MockHTTPClient { request in
+    let httpClient = MockS3HTTPClient { request in
         return (
-            listObjectsMissingETAGXML,
+            listObjectsMissingETAGData,
             HTTPURLResponse(
                 url: request.url!,
                 statusCode: 200,
@@ -257,14 +306,40 @@ func listObjects_invalidResponseMissingETAGXML() async throws {
         httpClient: httpClient
     )
 
-    await #expect(throws: DecodingError.self) {
+    await #expect(throws: S3Error.decodingResponseFailed) {
         try await client.listObjects(
             bucket: "bucket"
         )
     }
 }
 
-private let listObjectsXML = """
+@Test
+func listObjects_invalidResponseMalformedXML() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: S3Error.decodingResponseFailed) {
+        try await client.listObjects(
+            bucket: "bucket"
+        )
+    }
+}
+
+private let listObjectsData = """
 <?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
     <Name>bucket</Name>
@@ -286,7 +361,7 @@ private let listObjectsXML = """
 </ListBucketResult>
 """.data(using: .utf8)!
 
-private let listObjectsTrunecatedXML = """
+private let listObjectsTrunecatedData = """
 <?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
     <Name>my-bucket</Name>
@@ -303,7 +378,17 @@ private let listObjectsTrunecatedXML = """
 </ListBucketResult>
 """.data(using: .utf8)!
 
-private let listObjectsMissingETAGXML = """
+private let listObjectsEmptyListData = """
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <Name>my-bucket</Name>
+    <Prefix></Prefix>
+    <MaxKeys>1000</MaxKeys>
+    <IsTruncated>false</IsTruncated>
+</ListBucketResult>
+""".data(using: .utf8)!
+
+private let listObjectsMissingETAGData = """
 <?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
     <Name>bucket</Name>

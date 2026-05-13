@@ -1,5 +1,5 @@
 //
-//  MockHTTPClient.swift
+//  MockS3HTTPClient.swift
 //  S3Kit
 //
 //  Created by Dennis Dreissen on 07/05/2026.
@@ -9,7 +9,7 @@
 import Foundation
 import S3Kit
 
-final class MockHTTPClient: HTTPClient, Sendable {
+final class MockS3HTTPClient: S3HTTPClient, Sendable {
 
     typealias Handler = @Sendable (URLRequest) throws -> (Data, URLResponse)
 

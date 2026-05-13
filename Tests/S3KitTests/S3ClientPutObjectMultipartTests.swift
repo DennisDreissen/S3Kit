@@ -11,481 +11,457 @@ import Foundation
 @testable import S3Kit
 
 @Test
-func putObjectMultipart_validResponseOneChunk() async throws {
-    nonisolated(unsafe) var requestCount = 0
-    nonisolated(unsafe) var capturedRequests: [URLRequest] = []
+func createMultipartUpload() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
-        capturedRequests.append(request)
-        requestCount += 1
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
 
-        let query = request.url?.query ?? ""
-
-        if query.contains("uploads") {
-            // Start
-            return (
-                initiateResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else if query.contains("partNumber") {
-            // Upload part
-            return (
-                Data(),
-                HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 200,
-                    httpVersion: nil,
-                    headerFields: [
-                        "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\""
-                    ]
-                )!
-            )
-        } else if query.contains("uploadId") {
-            // Complete
-            return (
-                completeResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else {
-            // Abort
-            Issue.record("Abort should not have been called")
-            throw URLError(.unknown)
-        }
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:],
+            )!
+        )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    let imageData = Data(repeating: 0, count: 2 * 1024 * 1024)
-    let stream = AsyncThrowingStream<Data, Error> { continuation in
-        continuation.yield(imageData)
-        continuation.finish()
+    let uploadId = try await client.createMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg"
+    )
+
+    #expect(urlRequest.httpMethod == "POST")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploads=")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+
+    #expect(uploadId == "test-upload-id")
+}
+
+@Test
+func createMultipartUpload_withContentType() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:],
+            )!
+        )
     }
 
-    nonisolated(unsafe) var progressValues: [Int] = []
+    let client = createS3Client(httpClient: httpClient)
 
-    try await client.putObjectMultipart(
-        stream: stream,
+    let uploadId = try await client.createMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg",
-        contentType: "image/jpeg"
-    ) { progress in
-        progressValues.append(progress)
-    }
+        contentType: "some/content-type"
+    )
 
-    #expect(capturedRequests.count == 3)
-    #expect(progressValues.count == 1)
-    #expect(progressValues.last == 2 * 1024 * 1024)
+    #expect(urlRequest.httpMethod == "POST")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploads=")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "some/content-type")
 
-    // Start multipart upload
-    #expect(capturedRequests[0].httpMethod == "POST")
-    #expect(capturedRequests[0].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[0].url?.absoluteString.contains("uploads") == true)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Content-Type"] == "image/jpeg")
-
-    var totalChunksSize = 0
-
-    // Upload chuck 1/1
-    #expect(capturedRequests[1].httpMethod == "PUT")
-    #expect(capturedRequests[1].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("partNumber=1") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-    totalChunksSize += Int(capturedRequests[1].allHTTPHeaderFields?["Content-Length"] ?? "0") ?? 0
-
-    #expect(totalChunksSize == 2 * 1024 * 1024)
-
-    // Complete upload
-    #expect(capturedRequests[2].httpMethod == "POST")
-    #expect(capturedRequests[2].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[2].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Content-Type"] == "application/xml")
+    #expect(uploadId == "test-upload-id")
 }
 
 @Test
-func putObjectMultipart_validResponseThreeChunks() async throws {
-    nonisolated(unsafe) var requestCount = 0
-    nonisolated(unsafe) var capturedRequests: [URLRequest] = []
+func createMultipartUpload_invalidResponseMalformedXML() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
 
-    let httpClient = MockHTTPClient { request in
-        capturedRequests.append(request)
-        requestCount += 1
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
 
-        let query = request.url?.query ?? ""
+    await #expect(throws: S3Error.decodingResponseFailed) {
+        try await client.createMultipartUpload(
+            bucket: "bucket",
+            key: "image1.jpg"
+        )
+    }
+}
 
-        if query.contains("uploads") {
-            // Start
-            return (
-                initiateResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else if query.contains("partNumber") {
-            // Upload part
-            return (
-                Data(),
-                HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 200,
-                    httpVersion: nil,
-                    headerFields: [
-                        "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\""
-                    ]
-                )!
-            )
-        } else if query.contains("uploadId") {
-            // Complete
-            return (
-                completeResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else {
-            // Abort
-            Issue.record("Abort should not have been called")
-            throw URLError(.unknown)
-        }
+@Test
+func createMultipartUpload_invalidStatusCode() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someErrorData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
+        try await client.createMultipartUpload(
+            bucket: "bucket",
+            key: "image1.jpg"
+        )
+    }
+}
+
+@Test
+func uploadPart() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                ],
+            )!
+        )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    let imageData = Data(repeating: 0, count: 12 * 1024 * 1024)
-    let stream = AsyncThrowingStream<Data, Error> { continuation in
-        continuation.yield(imageData)
-        continuation.finish()
-    }
-
-    nonisolated(unsafe) var progressValues: [Int] = []
-
-    try await client.putObjectMultipart(
-        stream: stream,
+    let data = try await client.uploadPart(
+        data: someData,
         bucket: "bucket",
         key: "image1.jpg",
-        contentType: "image/jpeg"
-    ) { progress in
-        progressValues.append(progress)
-    }
+        uploadId: "test-upload-id",
+        partNumber: 1
+    )
 
-    #expect(capturedRequests.count == 5)
-    #expect(progressValues.count == 3)
-    #expect(progressValues.last == 12 * 1024 * 1024)
+    #expect(urlRequest.httpMethod == "PUT")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
+    #expect(urlRequest.httpBody == someData)
 
-    // Start multipart upload
-    #expect(capturedRequests[0].httpMethod == "POST")
-    #expect(capturedRequests[0].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[0].url?.absoluteString.contains("uploads") == true)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Content-Type"] == "image/jpeg")
-
-    var totalChunksSize = 0
-
-    // Upload chuck 1/3
-    #expect(capturedRequests[1].httpMethod == "PUT")
-    #expect(capturedRequests[1].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("partNumber=1") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-    totalChunksSize += Int(capturedRequests[1].allHTTPHeaderFields?["Content-Length"] ?? "0") ?? 0
-
-    // Upload chuck 2/3
-    #expect(capturedRequests[2].httpMethod == "PUT")
-    #expect(capturedRequests[2].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[2].url?.absoluteString.contains("partNumber=2") == true)
-    #expect(capturedRequests[2].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-    totalChunksSize += Int(capturedRequests[2].allHTTPHeaderFields?["Content-Length"] ?? "0") ?? 0
-
-    // Upload chuck 3/3
-    #expect(capturedRequests[3].httpMethod == "PUT")
-    #expect(capturedRequests[3].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[3].url?.absoluteString.contains("partNumber=3") == true)
-    #expect(capturedRequests[3].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-    totalChunksSize += Int(capturedRequests[3].allHTTPHeaderFields?["Content-Length"] ?? "0") ?? 0
-
-    #expect(totalChunksSize == 12 * 1024 * 1024)
-
-    // Complete upload
-    #expect(capturedRequests[4].httpMethod == "POST")
-    #expect(capturedRequests[4].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[4].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[4].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[4].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[4].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[4].allHTTPHeaderFields?["Content-Type"] == "application/xml")
+    #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
+    #expect(data.partNumber == 1)
 }
 
 @Test
-func putObjectMultipart_abortsOnPartUploadError() async throws {
-    nonisolated(unsafe) var capturedRequests: [URLRequest] = []
+func uploadPart_missingETagHeader() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:],
+            )!
+        )
+    }
 
-    let httpClient = MockHTTPClient { request in
-        capturedRequests.append(request)
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
 
-        let query = request.url?.query ?? ""
+    await #expect(throws: S3Error.missingResponseHeader("ETag")) {
+        try await client.uploadPart(
+            data: someData,
+            bucket: "bucket",
+            key: "image1.jpg",
+            uploadId: "test-upload-id",
+            partNumber: 1
+        )
+    }
+}
 
-        if query.contains("uploads") {
-            return (
-                initiateResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else if query.contains("partNumber") {
-            return (
-                someErrorData,
-                HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
-            )
-        } else {
-            // Abort
-            return (
-                Data(),
-                HTTPURLResponse(url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
-            )
-        }
+@Test
+func uploadPart_invalidStatusCode() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someErrorData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
+        try await client.uploadPart(
+            data: someData,
+            bucket: "bucket",
+            key: "image1.jpg",
+            uploadId: "test-upload-id",
+            partNumber: 1
+        )
+    }
+}
+
+@Test
+func completeMultipartUpload() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            completeMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:],
+            )!
+        )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    let imageData = Data(repeating: 0, count: 12 * 1024 * 1024)
-    let stream = AsyncThrowingStream<Data, Error> { continuation in
-        continuation.yield(imageData)
-        continuation.finish()
-    }
+    try await client.completeMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id",
+        parts: [
+            S3ObjectPart(partNumber: 1, eTag: "\"e5a8627dc082f11998d9526e6bc1c542\"")
+        ]
+    )
 
-    await #expect(throws: S3Error.errorResponse(statusCode: 500, body: someErrorData)) {
-        try await client.putObjectMultipart(
-            stream: stream,
-            bucket: "bucket",
-            key: "image1.jpg",
-            contentType: "image/jpeg"
-        )
-    }
+    #expect(urlRequest.httpMethod == "POST")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "application/xml")
 
-    #expect(capturedRequests.count == 3)
-
-    // Start multipart upload
-    #expect(capturedRequests[0].httpMethod == "POST")
-    #expect(capturedRequests[0].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[0].url?.absoluteString.contains("uploads") == true)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Content-Type"] == "image/jpeg")
-
-    // Upload chuck 1/1
-    #expect(capturedRequests[1].httpMethod == "PUT")
-    #expect(capturedRequests[1].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("partNumber=1") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-
-    // Abort upload
-    #expect(capturedRequests[2].httpMethod == "DELETE")
-    #expect(capturedRequests[2].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[2].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.httpBody == (
+        "<CompleteMultipartUpload>" +
+        "<Part>" +
+        "<PartNumber>1</PartNumber>" +
+        "<ETag>&quot;e5a8627dc082f11998d9526e6bc1c542&quot;</ETag>" +
+        "</Part>" +
+        "</CompleteMultipartUpload>"
+    ).data(using: .utf8))
 }
 
 @Test
-func putObjectMultipart_abortsOnCompleteError() async throws {
-    nonisolated(unsafe) var capturedRequests: [URLRequest] = []
+func completeMultipartUpload_multipleParts() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
 
-    let httpClient = MockHTTPClient { request in
-        capturedRequests.append(request)
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
 
-        let query = request.url?.query ?? ""
-
-        if query.contains("uploads") {
-            return (
-                initiateResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else if query.contains("partNumber") {
-            return (
-                Data(),
-                HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 200,
-                    httpVersion: nil,
-                    headerFields: ["ETag": "\"e5a8627dc082f11998d9526e6bc1c542\""]
-                )!
-            )
-        } else if request.httpMethod == "POST" {
-            // Complete
-            return (
-                someErrorData,
-                HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
-            )
-        } else {
-            // Abort
-            return (
-                Data(),
-                HTTPURLResponse(url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
-            )
-        }
+        return (
+            completeMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:],
+            )!
+        )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    let imageData = Data(repeating: 0, count: 2 * 1024 * 1024)
-    let stream = AsyncThrowingStream<Data, Error> { continuation in
-        continuation.yield(imageData)
-        continuation.finish()
-    }
+    try await client.completeMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id",
+        parts: [
+            S3ObjectPart(partNumber: 2, eTag: "\"e5a8627dc082f11998d9526e6bc1c542\""),
+            S3ObjectPart(partNumber: 1, eTag: "\"e5a8627dc082f11998d9526e6bc1c543\""),
+            S3ObjectPart(partNumber: 3, eTag: "\"e5a8627dc082f11998d9526e6bc1c544\"")
+        ]
+    )
 
-    await #expect(throws: S3Error.errorResponse(statusCode: 500, body: someErrorData)) {
-        try await client.putObjectMultipart(
-            stream: stream,
-            bucket: "bucket",
-            key: "image1.jpg",
-            contentType: "image/jpeg"
-        )
-    }
+    #expect(urlRequest.httpMethod == "POST")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["Content-Type"] == "application/xml")
 
-    #expect(capturedRequests.count == 4)
-
-    // Start multipart upload
-    #expect(capturedRequests[0].httpMethod == "POST")
-    #expect(capturedRequests[0].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[0].url?.absoluteString.contains("uploads") == true)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Content-Type"] == "image/jpeg")
-
-    // Upload chuck 1/1
-    #expect(capturedRequests[1].httpMethod == "PUT")
-    #expect(capturedRequests[1].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("partNumber=1") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-
-    // Complete upload
-    #expect(capturedRequests[2].httpMethod == "POST")
-    #expect(capturedRequests[2].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[2].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-
-    // Abort upload
-    #expect(capturedRequests[3].httpMethod == "DELETE")
-    #expect(capturedRequests[3].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[3].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[3].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    #expect(urlRequest.httpBody == (
+        "<CompleteMultipartUpload>" +
+            "<Part>" +
+                "<PartNumber>1</PartNumber>" +
+                "<ETag>&quot;e5a8627dc082f11998d9526e6bc1c543&quot;</ETag>" +
+            "</Part>" +
+            "<Part>" +
+                "<PartNumber>2</PartNumber>" +
+                "<ETag>&quot;e5a8627dc082f11998d9526e6bc1c542&quot;</ETag>" +
+            "</Part>" +
+            "<Part>" +
+                "<PartNumber>3</PartNumber>" +
+                "<ETag>&quot;e5a8627dc082f11998d9526e6bc1c544&quot;</ETag>" +
+            "</Part>" +
+        "</CompleteMultipartUpload>"
+    ).data(using: .utf8))
 }
 
 @Test
-func putObjectMultipart_abortsOnMissingETAGInPartUpload() async throws {
-    nonisolated(unsafe) var capturedRequests: [URLRequest] = []
+func completeMultipartUpload_errorWithSuccessStatusCode() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someErrorData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
 
-    let httpClient = MockHTTPClient { request in
-        capturedRequests.append(request)
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
 
-        let query = request.url?.query ?? ""
+    await #expect(throws: S3Error.responseError(statusCode: 200, errorData: someError)) {
+        try await client.completeMultipartUpload(
+            bucket: "bucket",
+            key: "image1.jpg",
+            uploadId: "test-upload-id",
+            parts: [
+                S3ObjectPart(partNumber: 1, eTag: "\"e5a8627dc082f11998d9526e6bc1c542\"")
+            ]
+        )
+    }
+}
 
-        if query.contains("uploads") {
-            return (
-                initiateResponse,
-                HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
-            )
-        } else if query.contains("partNumber") {
-            return (
-                Data(),
-                HTTPURLResponse(
-                    url: request.url!,
-                    statusCode: 200,
-                    httpVersion: nil,
-                    headerFields: [:]
-                )!
-            )
-        } else if request.httpMethod == "POST" {
-            // Complete
-            Issue.record("Complete should not have been called")
-            throw URLError(.unknown)
-        } else {
-            // Abort
-            return (
-                Data(),
-                HTTPURLResponse(url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
-            )
-        }
+@Test
+func completeMultipartUpload_invalidStatusCode() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someErrorData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
+
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
+        try await client.completeMultipartUpload(
+            bucket: "bucket",
+            key: "image1.jpg",
+            uploadId: "test-upload-id",
+            parts: [
+                S3ObjectPart(partNumber: 1, eTag: "\"e5a8627dc082f11998d9526e6bc1c542\"")
+            ]
+        )
+    }
+}
+
+@Test
+func abortMultipartUpload() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            completeMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:],
+            )!
+        )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    let imageData = Data(repeating: 0, count: 2 * 1024 * 1024)
-    let stream = AsyncThrowingStream<Data, Error> { continuation in
-        continuation.yield(imageData)
-        continuation.finish()
-    }
+    try await client.abortMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id"
+    )
 
-    await #expect(throws: S3Error.missingHeader("ETag")) {
-        try await client.putObjectMultipart(
-            stream: stream,
-            bucket: "bucket",
-            key: "image1.jpg",
-            contentType: "image/jpeg"
+    #expect(urlRequest.httpMethod == "DELETE")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
+    #expect(urlRequest.allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
+    #expect(urlRequest.allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+}
+
+@Test
+func abortMultipartUpload_invalidStatusCode() async throws {
+    let httpClient = MockS3HTTPClient { request in
+        return (
+            someErrorData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 500,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
         )
     }
 
-    #expect(capturedRequests.count == 3)
+    let client = createS3Client(
+        endpoint: "https://example.local",
+        httpClient: httpClient
+    )
 
-    // Start multipart upload
-    #expect(capturedRequests[0].httpMethod == "POST")
-    #expect(capturedRequests[0].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[0].url?.absoluteString.contains("uploads") == true)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[0].allHTTPHeaderFields?["Content-Type"] == "image/jpeg")
-
-    // Upload chuck 1/1
-    #expect(capturedRequests[1].httpMethod == "PUT")
-    #expect(capturedRequests[1].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("partNumber=1") == true)
-    #expect(capturedRequests[1].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
-    #expect(capturedRequests[1].allHTTPHeaderFields?["Content-Type"] == "application/octet-stream")
-
-    // Abort upload
-    #expect(capturedRequests[2].httpMethod == "DELETE")
-    #expect(capturedRequests[2].url?.absoluteString.contains("https://example.local/bucket/image1.jpg") == true)
-    #expect(capturedRequests[2].url?.absoluteString.contains("uploadId=test-upload-id") == true)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["Authorization"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-date"]?.isEmpty == false)
-    #expect(capturedRequests[2].allHTTPHeaderFields?["x-amz-content-sha256"]?.isEmpty == false)
+    await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
+        try await client.abortMultipartUpload(
+            bucket: "bucket",
+            key: "image1.jpg",
+            uploadId: "test-upload-id"
+        )
+    }
 }
 
-private let initiateResponse = """
+private let createMultipartUploadData = """
 <?xml version="1.0" encoding="UTF-8"?>
 <InitiateMultipartUploadResult>
     <Bucket>bucket</Bucket>
@@ -494,7 +470,7 @@ private let initiateResponse = """
 </InitiateMultipartUploadResult>
 """.data(using: .utf8)!
 
-private let completeResponse = """
+private let completeMultipartUploadData = """
 <?xml version="1.0" encoding="UTF-8"?>
 <CompleteMultipartUploadResult>
     <Bucket>bucket</Bucket>

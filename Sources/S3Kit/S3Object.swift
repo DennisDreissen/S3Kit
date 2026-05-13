@@ -21,22 +21,11 @@ public struct S3Object: Sendable, Equatable {
 
     /// The date and time the object was last modified.
     public let lastModified: Date
-}
 
-extension S3Object: Codable {
-
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        key = try container.decode(String.self, forKey: .key)
-        eTag = try container.decode(String.self, forKey: .eTag).trimmingCharacters(in: .init(charactersIn: "\""))
-        size = try container.decode(Int.self, forKey: .size)
-        lastModified = try container.decode(Date.self, forKey: .lastModified)
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case key = "Key"
-        case eTag = "ETag"
-        case size = "Size"
-        case lastModified = "LastModified"
+    public init(key: String, eTag: String, size: Int, lastModified: Date) {
+        self.key = key
+        self.eTag = eTag
+        self.size = size
+        self.lastModified = lastModified
     }
 }
