@@ -1,3 +1,7 @@
+![Tests](https://img.shields.io/github/actions/workflow/status/DennisDreissen/S3Kit/tests.yml?color=brightgreen&label=Tests&logo=github)
+![SPM](https://img.shields.io/badge/Swift_Package_Manager-compatible-brightgreen)
+![Swift](https://img.shields.io/badge/Swift-6.0_6.1_6.2_6.3-brightgreen)
+
 # S3Kit for Swift
 
 This is an S3 client for interacting with AWS S3 and S3-compatible storage services. This library is intentionally limited in scope as a lightweight alternative to larger SDKs like [Soto](https://github.com/soto-project/soto) or the [AWS SDK for Swift.](https://github.com/awslabs/aws-sdk-swift) Feature requests and pull requests are welcome, but please keep the minimal scope in mind.
