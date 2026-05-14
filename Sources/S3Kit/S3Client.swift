@@ -178,8 +178,7 @@ public struct S3Client: Sendable {
 
         return try decode(
             ListObjectsResponse.self,
-            from: data,
-            dateDecodingStrategy: .formatted(.iso8601)
+            from: data
         ).s3ListObjects
     }
 
@@ -493,11 +492,33 @@ private extension S3Client {
     func decode<T: Decodable>(
         _ type: T.Type,
         from data: Data,
-        dateDecodingStrategy: XMLDecoder.DateDecodingStrategy = .secondsSince1970
+        dateDecodingStrategy: XMLDecoder.DateDecodingStrategy? = nil
     ) throws -> T {
         do {
             let decoder = XMLDecoder()
-            decoder.dateDecodingStrategy = dateDecodingStrategy
+
+            if let dateDecodingStrategy {
+                decoder.dateDecodingStrategy = dateDecodingStrategy
+            } else {
+                decoder.dateDecodingStrategy = .custom { decoder in
+                    let container = try decoder.singleValueContainer()
+                    let string = try container.decode(String.self)
+
+                    if let date = DateFormatter.iso8601WithFractional.date(from: string) {
+                        return date
+                    }
+                    
+                    if let date = DateFormatter.iso8601WithoutFractional.date(from: string) {
+                        return date
+                    }
+
+                    throw DecodingError.dataCorruptedError(
+                        in: container,
+                        debugDescription: "Invalid ISO 8601 date: \(string)"
+                    )
+                }
+            }
+
             return try decoder.decode(type.self, from: data)
         } catch {
             throw S3Error.decodingResponseFailed
