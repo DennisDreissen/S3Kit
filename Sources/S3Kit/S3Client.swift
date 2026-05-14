@@ -239,7 +239,7 @@ public struct S3Client: Sendable {
     public func createMultipartUpload(
         bucket: String,
         key: String,
-        contentType: String? = nil,
+        contentType: String? = nil
     ) async throws -> String {
         let headers = [
             "Content-Type": contentType
@@ -406,7 +406,7 @@ public struct S3Client: Sendable {
     ) async throws {
         let request = try createRequest(
             method: "DELETE",
-            path: "/\(bucket)/\(key)",
+            path: "/\(bucket)/\(key)"
         )
 
         try await executeRequest(request)

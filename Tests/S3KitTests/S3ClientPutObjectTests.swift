@@ -146,7 +146,7 @@ func putObject_withEmptyData() async throws {
     try await client.putObject(
         data: Data(),
         bucket: "bucket",
-        key: "image1.jpg",
+        key: "image1.jpg"
     )
 
     #expect(urlRequest.httpMethod == "PUT")

@@ -27,7 +27,7 @@ func createMultipartUpload() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:],
+                headerFields: [:]
             )!
         )
     }
@@ -61,7 +61,7 @@ func createMultipartUpload_withContentType() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:],
+                headerFields: [:]
             )!
         )
     }
@@ -153,7 +153,7 @@ func uploadPart() async throws {
                 httpVersion: nil,
                 headerFields: [
                     "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
-                ],
+                ]
             )!
         )
     }
@@ -189,7 +189,7 @@ func uploadPart_missingETagHeader() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:],
+                headerFields: [:]
             )!
         )
     }
@@ -253,7 +253,7 @@ func completeMultipartUpload() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:],
+                headerFields: [:]
             )!
         )
     }
@@ -299,7 +299,7 @@ func completeMultipartUpload_multipleParts() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:],
+                headerFields: [:]
             )!
         )
     }
@@ -417,7 +417,7 @@ func abortMultipartUpload() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:],
+                headerFields: [:]
             )!
         )
     }

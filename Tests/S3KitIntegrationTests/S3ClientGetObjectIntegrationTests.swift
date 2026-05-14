@@ -21,7 +21,7 @@ func getObject() async throws {
     try await client.putObject(
         data: data,
         bucket: bucket,
-        key: key,
+        key: key
     )
 
     let objectData = try await client.getObject(bucket: bucket, key: key)

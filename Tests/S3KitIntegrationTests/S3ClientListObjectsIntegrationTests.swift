@@ -22,7 +22,7 @@ func listObjects() async throws {
         try await client.putObject(
             data: data,
             bucket: bucket,
-            key: key,
+            key: key
         )
     }
 
@@ -52,7 +52,7 @@ func listObjects_withPrefix() async throws {
         try await client.putObject(
             data: data,
             bucket: bucket,
-            key: key,
+            key: key
         )
     }
 
@@ -86,7 +86,7 @@ func listObjects_maxKeysContinuationToken() async throws {
         try await client.putObject(
             data: data,
             bucket: bucket,
-            key: key,
+            key: key
         )
     }
 

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -13,7 +13,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "4.5.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"4.0.0"),
         .package(url: "https://github.com/CoreOffice/XMLCoder.git", from: "0.18.1"),
     ],
     targets: [
@@ -28,12 +28,12 @@ let package = Package(
         .testTarget(
             name: "S3KitTests",
             dependencies: ["S3Kit"],
-            path: "Tests/S3KitTests",
+            path: "Tests/S3KitTests"
         ),
         .testTarget(
             name: "S3KitIntegrationTests",
             dependencies: ["S3Kit"],
-            path: "Tests/S3KitIntegrationTests",
+            path: "Tests/S3KitIntegrationTests"
         ),
     ],
     swiftLanguageModes: [.v6]

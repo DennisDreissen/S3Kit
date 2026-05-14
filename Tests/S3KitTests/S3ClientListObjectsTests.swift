@@ -126,7 +126,7 @@ func listObjects_validResponsePrefix() async throws {
 
     _ = try await client.listObjects(
         bucket: "bucket",
-        prefix: "abcd",
+        prefix: "abcd"
     )
 
     #expect(urlRequest.httpMethod == "GET")

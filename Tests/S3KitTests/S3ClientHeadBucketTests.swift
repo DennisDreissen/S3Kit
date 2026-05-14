@@ -66,7 +66,7 @@ func headBucket_invalidStatusCode() async throws {
 
     await #expect(throws: S3Error.responseError(statusCode: 500, errorData: someError)) {
         try await client.headBucket(
-            bucket: "bucket",
+            bucket: "bucket"
         )
     }
 }
