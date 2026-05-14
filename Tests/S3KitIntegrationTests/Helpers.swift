@@ -10,8 +10,12 @@ import Foundation
 import S3Kit
 
 func createS3Client() -> S3Client {
-    S3Client(
-        endpoint: URL(string: "http://127.0.0.1:29145")!,
+    let endpoint = URL(string:
+        ProcessInfo.processInfo.environment["S3_ENDPOINT"] ?? "http://localhost:29145"
+    )!
+
+    return S3Client(
+        endpoint: endpoint,
         credentials: S3Credentials(
             accessKeyId: "s3client_integration_tests",
             secretAccessKey: "s3client_integration_tests"

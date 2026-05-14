@@ -1,0 +1,81 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.3-jammy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-unit-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-unit-
+            ${{ runner.os }}-spm-
+
+      - name: Run unit tests
+        run: swift test --filter S3KitTests
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.3-jammy
+    services:
+      minio:
+        image: ghcr.io/dennisdreissen/minio:latest
+        env:
+          MINIO_ROOT_USER: s3client_integration_tests
+          MINIO_ROOT_PASSWORD: s3client_integration_tests
+          MINIO_DEFAULT_BUCKETS: >-
+            bucket01,
+            bucket02,
+            list-objects-bucket01,
+            list-objects-bucket02,
+            list-objects-bucket03,
+            list-objects-bucket04
+        ports:
+          - 9000:9000
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install curl
+        run: |
+          apt-get update
+          apt-get install -y curl
+
+      - name: Wait for MinIO
+        run: |
+          until curl -sf http://minio:9000/minio/health/live; do
+            echo "Waiting for MinIO..."
+            sleep 2
+          done
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-integration-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-integration-
+            ${{ runner.os }}-spm-
+
+      - name: Run integration tests
+        env:
+          S3_ENDPOINT: http://minio:9000
+        run: swift test --filter S3KitIntegrationTests

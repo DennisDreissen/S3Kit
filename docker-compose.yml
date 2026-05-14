@@ -1,31 +1,24 @@
 services:
   minio:
-    image: minio/minio
-    command: server /data
+    image: 'ghcr.io/dennisdreissen/minio:latest'
     ports:
-      - "29145:9000"
+      - '29145:9000'
     environment:
       MINIO_ROOT_USER: s3client_integration_tests
       MINIO_ROOT_PASSWORD: s3client_integration_tests
+      MINIO_DEFAULT_BUCKETS: >-
+        bucket01,
+        bucket02,
+        list-objects-bucket01,
+        list-objects-bucket02,
+        list-objects-bucket03,
+        list-objects-bucket04
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://localhost:9000/minio/health/live'
       interval: 5s
       timeout: 5s
-      retries: 5
-
-  minio-setup:
-    image: minio/mc
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-        mc alias set local http://minio:9000 s3client_integration_tests s3client_integration_tests;
-        mc mb local/bucket01;
-        mc mb local/bucket02;
-        mc mb local/list-objects-bucket01;
-        mc mb local/list-objects-bucket02;
-        mc mb local/list-objects-bucket03;
-        mc mb local/list-objects-bucket04;
-        exit 0;
-      "
+      retries: 10
