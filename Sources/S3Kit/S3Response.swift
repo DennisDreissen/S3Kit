@@ -6,7 +6,6 @@
 //  Copyright © 2026 Dennis Dreissen
 //
 
-@dynamicMemberLookup
 public struct S3Response<Result: Sendable>: Sendable {
 
     /// The response object from the request to the S3 service.
@@ -14,10 +13,6 @@ public struct S3Response<Result: Sendable>: Sendable {
 
     /// The raw response headers from the S3 service.
     public let headers: [String: String]
-
-    public subscript<T>(dynamicMember keyPath: KeyPath<Result, T>) -> T {
-        result[keyPath: keyPath]
-    }
 
     public func value(forHeaderField key: String) -> String? {
         headers.first { $0.key.caseInsensitiveCompare(key) == .orderedSame }?.value

@@ -40,10 +40,12 @@ func headObject() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.headObject(
+    let response = try await client.headObject(
         bucket: "bucket",
         key: "image1.jpg"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "HEAD")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
@@ -55,7 +57,7 @@ func headObject() async throws {
     #expect(data.size == 7195686)
     #expect(data.lastModified == rfcDateFormatter.date(from: "Tue, 01 May 2000 18:30:59 GMT"))
     #expect(data.contentType == "image/jpeg")
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -83,7 +85,7 @@ func headObject_withCustomHeaders() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.headObject(
+    let response = try await client.headObject(
         bucket: "bucket",
         key: "image1.jpg",
         customHeaders: [
@@ -95,6 +97,8 @@ func headObject_withCustomHeaders() async throws {
             "x-amz-content-sha256": "reserved-header",
         ]
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "HEAD")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
@@ -136,10 +140,12 @@ func headObject_withoutContentType() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.headObject(
+    let response = try await client.headObject(
         bucket: "bucket",
         key: "image1.jpg"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "HEAD")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")

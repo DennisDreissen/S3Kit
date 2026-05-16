@@ -36,11 +36,13 @@ func listParts() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listParts(
+    let response = try await client.listParts(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
@@ -64,7 +66,7 @@ func listParts() async throws {
         size: 1234567,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -87,7 +89,7 @@ func listParts_withCustomHeaders() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listParts(
+    let response = try await client.listParts(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id",
@@ -100,6 +102,8 @@ func listParts_withCustomHeaders() async throws {
             "x-amz-content-sha256": "reserved-header",
         ]
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
@@ -149,11 +153,13 @@ func listParts_validResponseTrunecated() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listParts(
+    let response = try await client.listParts(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
@@ -294,11 +300,13 @@ func listParts_emptyList() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listParts(
+    let response = try await client.listParts(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)

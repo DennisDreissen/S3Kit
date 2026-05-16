@@ -36,7 +36,7 @@ func createMultipartUpload() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.createMultipartUpload(
+    let response = try await client.createMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg"
     )
@@ -47,8 +47,8 @@ func createMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
-    #expect(data.result == "test-upload-id")
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.result == "test-upload-id")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -210,13 +210,15 @@ func uploadPart() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.uploadPart(
+    let response = try await client.uploadPart(
         data: someData,
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id",
         partNumber: 1
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
@@ -228,7 +230,7 @@ func uploadPart() async throws {
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.partNumber == 1)
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -253,7 +255,7 @@ func uploadPart_withCustomHeaders() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.uploadPart(
+    let response = try await client.uploadPart(
         data: someData,
         bucket: "bucket",
         key: "image1.jpg",
@@ -269,6 +271,8 @@ func uploadPart_withCustomHeaders() async throws {
             "Content-Type": "custom/content-type"
         ]
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
@@ -309,7 +313,7 @@ func uploadPart_withProgressHandler() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.uploadPart(
+    let response = try await client.uploadPart(
         data: someData,
         bucket: "bucket",
         key: "image1.jpg",
@@ -319,6 +323,8 @@ func uploadPart_withProgressHandler() async throws {
         progressHandlerCalls.append(progress)
     }
 
+    let data = response.result
+    
     #expect(urlRequest.httpMethod == "PUT")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
@@ -417,7 +423,7 @@ func completeMultipartUpload() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.completeMultipartUpload(
+    let response = try await client.completeMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id",
@@ -441,7 +447,7 @@ func completeMultipartUpload() async throws {
         "</Part>" +
         "</CompleteMultipartUpload>"
     ).data(using: .utf8))
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -643,7 +649,7 @@ func abortMultipartUpload() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.abortMultipartUpload(
+    let response = try await client.abortMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id"
@@ -654,7 +660,7 @@ func abortMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

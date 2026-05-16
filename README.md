@@ -48,7 +48,7 @@ try await client.headBucket(bucket: "bucket")
 Get metadata information about an object.
 
  ```swift
-let metadata = try await client.headObject(bucket: "bucket", key: "example.jpg")
+let response = try await client.headObject(bucket: "bucket", key: "example.jpg")
  ```
 
 ### List objects
@@ -56,11 +56,11 @@ let metadata = try await client.headObject(bucket: "bucket", key: "example.jpg")
 List all objects in a bucket. The max keys and continuation token can be used to achieve pagination. The prefix limits items that have a name starting with the prefix.
 
 ```swift
-let objectsData = try await client.listObjects(bucket: "bucket")
+let response = try await client.listObjects(bucket: "bucket")
 ```
 
 ```swift
-let objectsData = try await client.listObjects(
+let response = try await client.listObjects(
     bucket: "bucket",
     prefix: "prefix",
     continuationToken: "token",
@@ -71,7 +71,7 @@ let objectsData = try await client.listObjects(
 ### Get object
 
 ```swift
-let data = try await client.getObject(bucket: "bucket", key: "example.jpg")
+let response = try await client.getObject(bucket: "bucket", key: "example.jpg")
 ```
 
 ### Put object
@@ -94,7 +94,7 @@ try await client.putObject(
 Initiate a new multipart upload. The `uploadId` should be passed to all other multipart related calls.
 
 ```swift
-let uploadId = try await client.createMultipartUpload(
+let response = try await client.createMultipartUpload(
     bucket: "bucket",
     key: "example.jpg",
     contentType: "image/jpeg"
@@ -106,7 +106,7 @@ let uploadId = try await client.createMultipartUpload(
 Upload a part. The returned `objectPart` from all parts uploaded should be passed to the `completeMultipartUpload` method.
 
 ```swift
-let objectPart = try await client.uploadPart(
+let response = try await client.uploadPart(
     data: Data(),
     bucket: "bucket",
     key: "example.jpg",
@@ -122,7 +122,7 @@ let objectPart = try await client.uploadPart(
 List all parts in a bucket for a given upload id. The max parts and part number marker can be used to achieve pagination.
 
 ```swift
-let partsData = try await client.listParts(
+let response = try await client.listParts(
     bucket: "bucket",
     key: "example.jpg",
     uploadId: "uploadId",
@@ -130,7 +130,7 @@ let partsData = try await client.listParts(
 ```
 
 ```swift
-let partsData = try await client.listParts(
+let response = try await client.listParts(
     bucket: "bucket",
     key: "example.jpg",
     uploadId: "uploadId",
