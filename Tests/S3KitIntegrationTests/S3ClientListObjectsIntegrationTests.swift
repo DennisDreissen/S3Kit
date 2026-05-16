@@ -26,7 +26,7 @@ func listObjects() async throws {
         )
     }
 
-    let listObjects = try await client.listObjects(bucket: bucket)
+    let listObjects = try await client.listObjects(bucket: bucket).result
 
     #expect(listObjects.isTruncated == false)
     #expect(listObjects.nextContinuationToken == nil)
@@ -59,7 +59,7 @@ func listObjects_withPrefix() async throws {
     let listObjects = try await client.listObjects(
         bucket: bucket,
         prefix: "dir01"
-    )
+    ).result
 
     #expect(listObjects.isTruncated == false)
     #expect(listObjects.nextContinuationToken == nil)
@@ -93,7 +93,7 @@ func listObjects_maxKeysContinuationToken() async throws {
     let listObjects = try await client.listObjects(
         bucket: bucket,
         maxKeys: 5
-    )
+    ).result
 
     #expect(listObjects.isTruncated == true)
     #expect(listObjects.nextContinuationToken != nil)
@@ -103,7 +103,7 @@ func listObjects_maxKeysContinuationToken() async throws {
         bucket: bucket,
         continuationToken: listObjects.nextContinuationToken!,
         maxKeys: 5
-    )
+    ).result
 
     #expect(listObjects2.isTruncated == true)
     #expect(listObjects2.nextContinuationToken != nil)
@@ -113,7 +113,7 @@ func listObjects_maxKeysContinuationToken() async throws {
         bucket: bucket,
         continuationToken: listObjects2.nextContinuationToken!,
         maxKeys: 5
-    )
+    ).result
 
     #expect(listObjects3.isTruncated == false)
     #expect(listObjects3.nextContinuationToken == nil)
@@ -130,7 +130,7 @@ func listObjects_emptyBucket() async throws {
 
     let bucket = "list-objects-bucket04"
 
-    let listObjects = try await client.listObjects(bucket: bucket)
+    let listObjects = try await client.listObjects(bucket: bucket).result
 
     #expect(listObjects.isTruncated == false)
     #expect(listObjects.nextContinuationToken == nil)

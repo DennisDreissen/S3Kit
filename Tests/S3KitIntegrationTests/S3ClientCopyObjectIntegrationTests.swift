@@ -27,7 +27,7 @@ func copyObject() async throws {
         contentType: contentType
     )
 
-    let sourceMetadata = try await client.headObject(bucket: sourceBucket, key: key)
+    let sourceMetadata = try await client.headObject(bucket: sourceBucket, key: key).result
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
         try await client.headObject(bucket: destinationBucket, key: key)
@@ -45,7 +45,7 @@ func copyObject() async throws {
         key: key
     )
 
-    let destinationMetadata = try await client.headObject(bucket: destinationBucket, key: key)
+    let destinationMetadata = try await client.headObject(bucket: destinationBucket, key: key).result
 
     #expect(destinationMetadata.eTag.isEmpty == false)
     #expect(destinationMetadata.size == data.count)
@@ -73,7 +73,7 @@ func copyObject_withKeyWithSpaces() async throws {
         contentType: contentType
     )
 
-    let sourceMetadata = try await client.headObject(bucket: sourceBucket, key: key)
+    let sourceMetadata = try await client.headObject(bucket: sourceBucket, key: key).result
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
         try await client.headObject(bucket: destinationBucket, key: key)
@@ -91,7 +91,7 @@ func copyObject_withKeyWithSpaces() async throws {
         key: key
     )
 
-    let destinationMetadata = try await client.headObject(bucket: destinationBucket, key: key)
+    let destinationMetadata = try await client.headObject(bucket: destinationBucket, key: key).result
 
     #expect(destinationMetadata.eTag.isEmpty == false)
     #expect(destinationMetadata.size == data.count)

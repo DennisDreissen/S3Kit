@@ -36,9 +36,11 @@ func listObjects() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listObjects(
+    let response = try await client.listObjects(
         bucket: "bucket"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
@@ -62,7 +64,7 @@ func listObjects() async throws {
         size: 1234567,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -85,7 +87,7 @@ func listObjects_withCustomHeaders() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listObjects(
+    let response = try await client.listObjects(
         bucket: "bucket",
         customHeaders: [
             "x-aws-custom-header": "custom-header-value",
@@ -96,6 +98,8 @@ func listObjects_withCustomHeaders() async throws {
             "x-amz-content-sha256": "reserved-header",
         ]
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
@@ -145,9 +149,11 @@ func listObjects_validResponseTrunecated() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listObjects(
+    let response = try await client.listObjects(
         bucket: "bucket"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)
@@ -315,9 +321,11 @@ func listObjects_emptyList() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.listObjects(
+    let response = try await client.listObjects(
         bucket: "bucket"
     )
+
+    let data = response.result
 
     #expect(urlRequest.httpMethod == "GET")
     #expect(urlRequest.url?.absoluteString.contains("https://example.local/bucket") == true)

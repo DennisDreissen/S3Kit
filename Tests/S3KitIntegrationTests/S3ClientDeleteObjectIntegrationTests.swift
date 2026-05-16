@@ -26,7 +26,8 @@ func deleteObject() async throws {
         contentType: contentType
     )
 
-    let metadata = try await client.headObject(bucket: bucket, key: key)
+    let metadata = try await client.headObject(bucket: bucket, key: key).result
+
     #expect(metadata.size == data.count)
 
     try await client.deleteObject(bucket: bucket, key: key)

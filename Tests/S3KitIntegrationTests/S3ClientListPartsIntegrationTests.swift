@@ -30,7 +30,7 @@ func listParts() async throws {
         )
     }
 
-    let listParts = try await client.listParts(bucket: bucket, key: key, uploadId: uploadId)
+    let listParts = try await client.listParts(bucket: bucket, key: key, uploadId: uploadId).result
 
     #expect(listParts.isTruncated == false)
     #expect(listParts.nextPartNumberMarker == nil || listParts.nextPartNumberMarker == 0)
@@ -67,7 +67,7 @@ func listParts_maxKeysContinuationToken() async throws {
         key: key,
         uploadId: uploadId,
         maxParts: 5
-    )
+    ).result
 
     #expect(listParts.isTruncated == true)
     #expect(listParts.nextPartNumberMarker != nil)
@@ -79,7 +79,7 @@ func listParts_maxKeysContinuationToken() async throws {
         uploadId: uploadId,
         partNumberMarker: listParts.nextPartNumberMarker!,
         maxParts: 5
-    )
+    ).result
 
     #expect(listParts2.isTruncated == true)
     #expect(listParts2.nextPartNumberMarker != nil)
@@ -91,7 +91,8 @@ func listParts_maxKeysContinuationToken() async throws {
         uploadId: uploadId,
         partNumberMarker: listParts2.nextPartNumberMarker!,
         maxParts: 5
-    )
+    ).result
+
     let partNumbers3 = listParts3.contents.map(\.partNumber)
 
     #expect(listParts2.isTruncated == true)
@@ -109,7 +110,7 @@ func listParts_emptyPartsUpload() async throws {
     let key = #function
 
     let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key).result
-    let listObjects = try await client.listParts(bucket: bucket, key: key, uploadId: uploadId)
+    let listObjects = try await client.listParts(bucket: bucket, key: key, uploadId: uploadId).result
 
     #expect(listObjects.isTruncated == false)
     #expect(listObjects.nextPartNumberMarker == nil || listObjects.nextPartNumberMarker == 0)

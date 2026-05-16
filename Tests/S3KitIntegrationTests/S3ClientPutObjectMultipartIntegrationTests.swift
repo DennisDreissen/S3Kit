@@ -60,8 +60,8 @@ func uploadPart() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 1
-    )
-    
+    ).result
+
     #expect(part1.partNumber == 1)
 
     let part2 = try await client.uploadPart(
@@ -70,7 +70,7 @@ func uploadPart() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 2
-    )
+    ).result
 
     #expect(part2.partNumber == 2)
 
@@ -80,7 +80,7 @@ func uploadPart() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 3
-    )
+    ).result
 
     #expect(part3.partNumber == 3)
 
@@ -92,12 +92,12 @@ func uploadPart() async throws {
             part1,
             part2,
             part3
-        ].map(\.result)
-    )
+        ]
+    ).result
 
-    let objectData = try await client.getObject(bucket: bucket, key: key)
+    let objectData = try await client.getObject(bucket: bucket, key: key).result
 
-    #expect(objectData.result == data)
+    #expect(objectData == data)
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
@@ -122,7 +122,7 @@ func uploadPart_withProgressHandler() async throws {
         partNumber: 1
     ) { progress in
         progressHandlerCalls.append(progress)
-    }
+    }.result
 
     #expect(part.partNumber == 1)
 
@@ -130,12 +130,12 @@ func uploadPart_withProgressHandler() async throws {
         bucket: bucket,
         key: key,
         uploadId: uploadId,
-        parts: [part.result]
+        parts: [part]
     )
 
-    let objectData = try await client.getObject(bucket: bucket, key: key)
+    let objectData = try await client.getObject(bucket: bucket, key: key).result
 
-    #expect(objectData.result == data)
+    #expect(objectData == data)
 
     #expect(progressHandlerCalls.isEmpty == false)
     #expect(progressHandlerCalls.last == 1.0)
@@ -166,7 +166,7 @@ func uploadPart_successWithContentType() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 1
-    )
+    ).result
 
     #expect(part1.partNumber == 1)
 
@@ -176,7 +176,7 @@ func uploadPart_successWithContentType() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 2
-    )
+    ).result
 
     #expect(part2.partNumber == 2)
 
@@ -186,7 +186,7 @@ func uploadPart_successWithContentType() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 3
-    )
+    ).result
 
     #expect(part3.partNumber == 3)
 
@@ -198,14 +198,14 @@ func uploadPart_successWithContentType() async throws {
             part1,
             part2,
             part3
-        ].map(\.result)
+        ]
     )
 
-    let objectData = try await client.getObject(bucket: bucket, key: key)
+    let objectData = try await client.getObject(bucket: bucket, key: key).result
 
-    #expect(objectData.result == data)
+    #expect(objectData == data)
 
-    let metadata = try await client.headObject(bucket: bucket, key: key)
+    let metadata = try await client.headObject(bucket: bucket, key: key).result
 
     #expect(metadata.eTag.isEmpty == false)
     #expect(metadata.size == data.count)
@@ -232,7 +232,7 @@ func uploadPart_abort() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 1
-    )
+    ).result
 
     #expect(part1.partNumber == 1)
 
@@ -242,7 +242,7 @@ func uploadPart_abort() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 2
-    )
+    ).result
 
     #expect(part2.partNumber == 2)
 
@@ -252,7 +252,7 @@ func uploadPart_abort() async throws {
         key: key,
         uploadId: uploadId,
         partNumber: 3
-    )
+    ).result
 
     #expect(part3.partNumber == 3)
 
@@ -260,7 +260,7 @@ func uploadPart_abort() async throws {
         bucket: bucket,
         key: key,
         uploadId: uploadId
-    )
+    ).result
 
     await #expect {
         _ = try await client.getObject(bucket: bucket, key: key)

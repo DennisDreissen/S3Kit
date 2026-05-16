@@ -36,7 +36,7 @@ func putObject() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.putObject(
+    let response = try await client.putObject(
         data: someData,
         bucket: "bucket",
         key: "image1.jpg"
@@ -50,7 +50,7 @@ func putObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
     #expect(httpClient.capturedBody == someData)
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

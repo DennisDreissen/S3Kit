@@ -36,7 +36,7 @@ func getObject() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.getObject(
+    let response = try await client.getObject(
         bucket: "bucket",
         key: "image1.jpg"
     )
@@ -47,8 +47,8 @@ func getObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
-    #expect(data.result == someData)
-    #expect(data.value(forHeaderField: "test-header") == "test-value")
+    #expect(response.result == someData)
+    #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -71,7 +71,7 @@ func getObject_withCustomHeaders() async throws {
 
     let client = createS3Client(httpClient: httpClient)
 
-    let data = try await client.getObject(
+    let response = try await client.getObject(
         bucket: "bucket",
         key: "image1.jpg",
         customHeaders: [
@@ -94,7 +94,7 @@ func getObject_withCustomHeaders() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
     #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
 
-    #expect(data.result == someData)
+    #expect(response.result == someData)
 }
 
 @Test
