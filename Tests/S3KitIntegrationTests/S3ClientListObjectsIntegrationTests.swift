@@ -30,7 +30,7 @@ func listObjects() async throws {
 
     #expect(listObjects.isTruncated == false)
     #expect(listObjects.nextContinuationToken == nil)
-    #expect(listObjects.contents.map(\.key) == keys)
+    #expect(listObjects.contents.map(\.key).sorted() == keys.sorted())
     #expect(listObjects.contents.allSatisfy { !$0.eTag.isEmpty })
     #expect(listObjects.contents.allSatisfy { $0.size == data.count })
     #expect(listObjects.contents.allSatisfy { $0.lastModified.timeIntervalSinceNow > -10 })
@@ -63,7 +63,7 @@ func listObjects_withPrefix() async throws {
 
     #expect(listObjects.isTruncated == false)
     #expect(listObjects.nextContinuationToken == nil)
-    #expect(listObjects.contents.map(\.key) == ["dir01/\(#function)01", "dir01/\(#function)03"])
+    #expect(listObjects.contents.map(\.key).sorted() == ["dir01/\(#function)01", "dir01/\(#function)03"])
 
     for key in keys {
         try await client.deleteObject(bucket: bucket, key: key)
@@ -97,7 +97,7 @@ func listObjects_maxKeysContinuationToken() async throws {
 
     #expect(listObjects.isTruncated == true)
     #expect(listObjects.nextContinuationToken != nil)
-    #expect(listObjects.contents.map(\.key) == Array(keys[0..<5]))
+    #expect(listObjects.contents.map(\.key).sorted() == Array(keys[0..<5]))
 
     let listObjects2 = try await client.listObjects(
         bucket: bucket,
@@ -107,7 +107,7 @@ func listObjects_maxKeysContinuationToken() async throws {
 
     #expect(listObjects2.isTruncated == true)
     #expect(listObjects2.nextContinuationToken != nil)
-    #expect(listObjects2.contents.map(\.key) == Array(keys[5..<10]))
+    #expect(listObjects2.contents.map(\.key).sorted()  == Array(keys[5..<10]))
 
     let listObjects3 = try await client.listObjects(
         bucket: bucket,

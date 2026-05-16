@@ -48,7 +48,10 @@ jobs:
             list-objects-bucket01,
             list-objects-bucket02,
             list-objects-bucket03,
-            list-objects-bucket04
+            list-objects-bucket04,
+            list-parts-bucket01,
+            list-parts-bucket02,
+            list-parts-bucket03
         ports:
           - 9000:9000
     steps:

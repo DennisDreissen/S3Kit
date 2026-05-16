@@ -18,12 +18,27 @@ final class MockS3HTTPClient: S3HTTPClient, Sendable {
     typealias Handler = @Sendable (URLRequest) throws -> (Data, URLResponse)
 
     private let handler: Handler
+    nonisolated(unsafe) var capturedBody: Data?
 
     init(handler: @escaping Handler) {
         self.handler = handler
     }
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        try handler(request)
+        capturedBody = request.httpBody
+        return try handler(request)
+    }
+
+    func upload(
+        for request: URLRequest,
+        from data: Data,
+        progressHandler: (@Sendable (Double) -> Void)?
+    ) async throws -> (Data, URLResponse) {
+        progressHandler?(0.3)
+        progressHandler?(0.6)
+        progressHandler?(0.9)
+        progressHandler?(1.0)
+        capturedBody = data
+        return try handler(request)
     }
 }

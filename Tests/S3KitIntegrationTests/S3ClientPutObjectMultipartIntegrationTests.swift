@@ -44,7 +44,7 @@ func createMultipartUpload_invalidBucket() async throws {
 }
 
 @Test
-func uploadPart_success() async throws {
+func uploadPart() async throws {
     let client = createS3Client()
 
     let data = randomData(megabytes: 12)
@@ -98,6 +98,50 @@ func uploadPart_success() async throws {
     let objectData = try await client.getObject(bucket: bucket, key: key)
 
     #expect(objectData == data)
+
+    try await client.deleteObject(bucket: bucket, key: key)
+}
+
+@Test
+func uploadPart_withProgressHandler() async throws {
+    let client = createS3Client()
+
+    let data = randomData(megabytes: 10)
+    let bucket = "bucket01"
+    let key = #function
+
+    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
+
+    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key)
+
+    let part = try await client.uploadPart(
+        data: data,
+        bucket: bucket,
+        key: key,
+        uploadId: uploadId,
+        partNumber: 1
+    ) { progress in
+        progressHandlerCalls.append(progress)
+    }
+
+    #expect(part.partNumber == 1)
+
+    try await client.completeMultipartUpload(
+        bucket: bucket,
+        key: key,
+        uploadId: uploadId,
+        parts: [part]
+    )
+
+    let objectData = try await client.getObject(bucket: bucket, key: key)
+
+    #expect(objectData == data)
+
+    #expect(progressHandlerCalls.isEmpty == false)
+    #expect(progressHandlerCalls.last == 1.0)
+    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
+
+    try await client.deleteObject(bucket: bucket, key: key)
 }
 
 @Test
@@ -167,6 +211,8 @@ func uploadPart_successWithContentType() async throws {
     #expect(metadata.size == data.count)
     #expect(metadata.lastModified.timeIntervalSinceNow > -10)
     #expect(metadata.contentType == contentType)
+
+    try await client.deleteObject(bucket: bucket, key: key)
 }
 
 @Test

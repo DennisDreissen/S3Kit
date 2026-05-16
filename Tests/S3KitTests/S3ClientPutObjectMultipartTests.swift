@@ -174,10 +174,59 @@ func uploadPart() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
-    #expect(urlRequest.httpBody == someData)
+    #expect(httpClient.capturedBody == someData)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.partNumber == 1)
+}
+
+@Test
+func uploadPart_withProgressHandler() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                ]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let data = try await client.uploadPart(
+        data: someData,
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id",
+        partNumber: 1
+    ) { progress in
+        progressHandlerCalls.append(progress)
+    }
+
+    #expect(urlRequest.httpMethod == "PUT")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
+    #expect(httpClient.capturedBody == someData)
+
+    #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
+    #expect(data.partNumber == 1)
+
+    #expect(progressHandlerCalls.isEmpty == false)
+    #expect(progressHandlerCalls.last == 1.0)
+    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
 }
 
 @Test

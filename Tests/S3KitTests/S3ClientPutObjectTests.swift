@@ -47,7 +47,50 @@ func putObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
-    #expect(urlRequest.httpBody == someData)
+    #expect(httpClient.capturedBody == someData)
+}
+
+@Test
+func putObject_withProgressHandler() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
+    
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            someData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    try await client.putObject(
+        data: someData,
+        bucket: "bucket",
+        key: "image1.jpg"
+    ) { progress in
+        progressHandlerCalls.append(progress)
+    }
+
+    #expect(urlRequest.httpMethod == "PUT")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
+    #expect(httpClient.capturedBody == someData)
+
+    #expect(progressHandlerCalls.isEmpty == false)
+    #expect(progressHandlerCalls.last == 1.0)
+    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
 }
 
 @Test
@@ -83,7 +126,7 @@ func putObject_signerAlgorithmSigV4a() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
-    #expect(urlRequest.httpBody == someData)
+    #expect(httpClient.capturedBody == someData)
 }
 
 @Test
@@ -120,7 +163,7 @@ func putObject_withContentType() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "image/jpeg")
-    #expect(urlRequest.httpBody == someData)
+    #expect(httpClient.capturedBody == someData)
 }
 
 @Test

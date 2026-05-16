@@ -13,6 +13,9 @@ services:
         list-objects-bucket02,
         list-objects-bucket03,
         list-objects-bucket04
+        list-parts-bucket01
+        list-parts-bucket02
+        list-parts-bucket03
     healthcheck:
       test:
         - CMD
@@ -22,3 +25,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+networks:
+  default:
+    name: s3client_test_network
