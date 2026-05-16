@@ -20,6 +20,18 @@ struct HTTPHeaders: Sendable {
         get { headers[name.lowercased()] }
         set { headers[name.lowercased()] = newValue }
     }
+
+    mutating func setIfMissing(_ value: String?, for key: String) {
+        guard let value else {
+            return
+        }
+
+        let key = key.lowercased()
+
+        if headers[key] == nil {
+            headers[key] = value
+        }
+    }
 }
 
 extension HTTPHeaders: Sequence {

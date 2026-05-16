@@ -55,15 +55,19 @@ public struct S3Client: Sendable {
     ///
     /// - Parameters:
     ///   - bucket: The name of the bucket.
+    @discardableResult
     public func headBucket(
-        bucket: String
-    ) async throws {
+        bucket: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<Void> {
         let request = try createRequest(
             method: "HEAD",
-            path: "/\(bucket)"
+            path: "/\(bucket)",
+            headers: sanitize(customHeaders)
         )
 
-        try await executeRequest(request)
+        let (_, http) = try await executeRequest(request)
+        return S3Response(result: (), headers: http.stringHeaders)
     }
 
     /// Retrieve metadata for an object without downloading its contents.
@@ -74,11 +78,13 @@ public struct S3Client: Sendable {
     /// - Returns: Metadata for the object.
     public func headObject(
         bucket: String,
-        key: String
-    ) async throws -> S3ObjectMetadata {
+        key: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<S3ObjectMetadata> {
         let request = try createRequest(
             method: "HEAD",
-            path: "/\(bucket)/\(key)"
+            path: "/\(bucket)/\(key)",
+            headers: sanitize(customHeaders)
         )
 
         let (_, http) = try await executeRequest(request)
@@ -99,11 +105,14 @@ public struct S3Client: Sendable {
             throw S3Error.missingResponseHeader("Last-Modified")
         }
 
-        return S3ObjectMetadata(
-            eTag: eTag,
-            size: contentLength,
-            lastModified: lastModified,
-            contentType: http.value(forHTTPHeaderField: "Content-Type")
+        return S3Response(
+            result: S3ObjectMetadata(
+                eTag: eTag,
+                size: contentLength,
+                lastModified: lastModified,
+                contentType: http.value(forHTTPHeaderField: "Content-Type")
+            ),
+            headers: http.stringHeaders
         )
     }
 
@@ -119,8 +128,9 @@ public struct S3Client: Sendable {
         bucket: String,
         prefix: String? = nil,
         continuationToken: String? = nil,
-        maxKeys: Int? = nil
-    ) async throws -> S3ListObjects {
+        maxKeys: Int? = nil,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<S3ListObjects> {
         let queryItems: [URLQueryItem] = [
             URLQueryItem(name: "list-type", value: "2"),
             URLQueryItem(name: "prefix", value: prefix),
@@ -131,15 +141,19 @@ public struct S3Client: Sendable {
         let request = try createRequest(
             method: "GET",
             path: "/\(bucket)",
-            queryItems: queryItems.filter { $0.value != nil }
+            queryItems: queryItems.filter { $0.value != nil },
+            headers: sanitize(customHeaders)
         )
 
-        let (data, _) = try await executeRequest(request)
+        let (data, http) = try await executeRequest(request)
 
-        return try decode(
-            ListObjectsResponse.self,
-            from: data
-        ).s3ListObjects
+        return S3Response(
+            result: try decode(
+                ListObjectsResponse.self,
+                from: data
+            ).s3ListObjects,
+            headers: http.stringHeaders
+        )
     }
 
     /// Download an object.
@@ -150,16 +164,21 @@ public struct S3Client: Sendable {
     /// - Returns: The object's content as `Data`.
     public func getObject(
         bucket: String,
-        key: String
-    ) async throws -> Data {
+        key: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<Data> {
         let request = try createRequest(
             method: "GET",
-            path: "/\(bucket)/\(key)"
+            path: "/\(bucket)/\(key)",
+            headers: sanitize(customHeaders)
         )
 
-        let (data, _) = try await executeRequest(request)
+        let (data, http) = try await executeRequest(request)
 
-        return data
+        return S3Response(
+            result: data,
+            headers: http.stringHeaders
+        )
     }
 
     /// Upload an object.
@@ -170,27 +189,33 @@ public struct S3Client: Sendable {
     ///   - key: The key of the object.
     ///   - contentType: A MIME type describing the format of the object data.
     ///   - progressHandler: A callback that reports the upload progress as a Double from 0-1.
+    @discardableResult
     public func putObject(
         data: Data,
         bucket: String,
         key: String,
         contentType: String? = nil,
+        customHeaders: [String: String] = [:],
         progressHandler: (@Sendable (Double) -> Void)? = nil
-    ) async throws {
-        let headers = [
-            "Content-Type": contentType
-        ]
+    ) async throws -> S3Response<Void> {
+        var headers = sanitize(customHeaders)
+        headers.setIfMissing(contentType, for: "Content-Type")
 
         var request = try createRequest(
             method: "PUT",
             path: "/\(bucket)/\(key)",
-            headers: HTTPHeaders(headers.compactMapValues { $0 }),
+            headers: headers,
             body: data
         )
 
         request.httpBody = nil
 
-        try await executeUploadRequest(request, data: data, progressHandler: progressHandler)
+        let (_, http) = try await executeUploadRequest(request, data: data, progressHandler: progressHandler)
+
+        return S3Response(
+            result: (),
+            headers: http.stringHeaders
+        )
     }
 
     /// Initiate a new multipart upload.
@@ -203,11 +228,11 @@ public struct S3Client: Sendable {
     public func createMultipartUpload(
         bucket: String,
         key: String,
-        contentType: String? = nil
-    ) async throws -> String {
-        let headers = [
-            "Content-Type": contentType
-        ]
+        contentType: String? = nil,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<String> {
+        var headers = sanitize(customHeaders)
+        headers.setIfMissing(contentType, for: "Content-Type")
 
         let queryItems = [
             URLQueryItem(name: "uploads", value: nil)
@@ -217,12 +242,15 @@ public struct S3Client: Sendable {
             method: "POST",
             path: "/\(bucket)/\(key)",
             queryItems: queryItems,
-            headers: HTTPHeaders(headers.compactMapValues { $0 })
+            headers: headers
         )
 
-        let (data, _) = try await executeRequest(request)
+        let (data, http) = try await executeRequest(request)
 
-        return try decode(StartMultipartUploadResponse.self, from: data).uploadId
+        return S3Response(
+            result: try decode(StartMultipartUploadResponse.self, from: data).uploadId,
+            headers: http.stringHeaders
+        )
     }
 
     /// Upload a part for a multipart upload.
@@ -241,11 +269,11 @@ public struct S3Client: Sendable {
         key: String,
         uploadId: String,
         partNumber: Int,
+        customHeaders: [String: String] = [:],
         progressHandler: (@Sendable (Double) -> Void)? = nil
-    ) async throws -> S3ObjectPart {
-        let headers = [
-            "Content-Type": "application/octet-stream"
-        ]
+    ) async throws -> S3Response<S3ObjectPart> {
+        var headers = sanitize(customHeaders)
+        headers.setIfMissing("application/octet-stream", for: "Content-Type")
 
         let queryItems = [
             URLQueryItem(name: "partNumber", value: "\(partNumber)"),
@@ -256,7 +284,7 @@ public struct S3Client: Sendable {
             method: "PUT",
             path: "/\(bucket)/\(key)",
             queryItems: queryItems,
-            headers: HTTPHeaders(headers),
+            headers: headers,
             body: data
         )
 
@@ -268,9 +296,12 @@ public struct S3Client: Sendable {
             throw S3Error.missingResponseHeader("ETag")
         }
 
-        return S3ObjectPart(
-            partNumber: partNumber,
-            eTag: eTag
+        return S3Response(
+            result: S3ObjectPart(
+                partNumber: partNumber,
+                eTag: eTag
+            ),
+            headers: http.stringHeaders
         )
     }
 
@@ -288,8 +319,9 @@ public struct S3Client: Sendable {
         key: String,
         uploadId: String,
         partNumberMarker: Int? = nil,
-        maxParts: Int? = nil
-    ) async throws -> S3ListParts {
+        maxParts: Int? = nil,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<S3ListParts> {
         let queryItems: [URLQueryItem] = [
             URLQueryItem(name: "uploadId", value: uploadId),
             URLQueryItem(name: "part-number-marker", value: partNumberMarker.map(String.init)),
@@ -299,15 +331,19 @@ public struct S3Client: Sendable {
         let request = try createRequest(
             method: "GET",
             path: "/\(bucket)/\(key)",
-            queryItems: queryItems.filter { $0.value != nil }
+            queryItems: queryItems.filter { $0.value != nil },
+            headers: sanitize(customHeaders)
         )
 
-        let (data, _) = try await executeRequest(request)
+        let (data, http) = try await executeRequest(request)
 
-        return try decode(
-            ListPartsResponse.self,
-            from: data
-        ).s3ListParts
+        return S3Response(
+            result: try decode(
+                ListPartsResponse.self,
+                from: data
+            ).s3ListParts,
+            headers: http.stringHeaders
+        )
     }
 
     /// Complete a multipart upload.
@@ -317,15 +353,16 @@ public struct S3Client: Sendable {
     ///   - key: The key of the object.
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
     ///   - parts: The list of parts returned by all the `uploadPart` calls.
+    @discardableResult
     public func completeMultipartUpload(
         bucket: String,
         key: String,
         uploadId: String,
-        parts: [S3ObjectPart]
-    ) async throws {
-        let headers = [
-            "Content-Type": "application/xml"
-        ]
+        parts: [S3ObjectPart],
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<Void> {
+        var headers = sanitize(customHeaders)
+        headers.setIfMissing("application/xml", for: "Content-Type")
 
         let queryItems = [
             URLQueryItem(name: "uploadId", value: uploadId)
@@ -335,17 +372,22 @@ public struct S3Client: Sendable {
             method: "POST",
             path: "/\(bucket)/\(key)",
             queryItems: queryItems,
-            headers: HTTPHeaders(headers),
+            headers: headers,
             body: try CompleteMultipartUploadRequest(parts: parts)
                 .encode()
         )
 
-        let (data, response) = try await executeRequest(request)
+        let (data, http) = try await executeRequest(request)
 
         if data.range(of: Data("<Error>".utf8)) != nil {
             let errorData = try decode(ErrorDataResponse.self, from: data)
-            throw S3Error.responseError(statusCode: response.statusCode, errorData: errorData.s3ErrorData)
+            throw S3Error.responseError(statusCode: http.statusCode, errorData: errorData.s3ErrorData)
         }
+
+        return S3Response(
+            result: (),
+            headers: http.stringHeaders
+        )
     }
 
     /// Abort a multipart upload.
@@ -354,20 +396,28 @@ public struct S3Client: Sendable {
     ///   - bucket: The name of the bucket where the object is uploaded to.
     ///   - key: The key of the object.
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
+    @discardableResult
     public func abortMultipartUpload(
         bucket: String,
         key: String,
-        uploadId: String
-    ) async throws {
+        uploadId: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<Void> {
         let request = try createRequest(
             method: "DELETE",
             path: "/\(bucket)/\(key)",
             queryItems: [
                 URLQueryItem(name: "uploadId", value: uploadId)
-            ]
+            ],
+            headers: sanitize(customHeaders)
         )
 
-        try await executeRequest(request)
+        let (_, http) = try await executeRequest(request)
+
+        return S3Response(
+            result: (),
+            headers: http.stringHeaders
+        )
     }
 
     /// Copy an object.
@@ -377,26 +427,32 @@ public struct S3Client: Sendable {
     ///   - sourceKey: The key of the object to be copied.
     ///   - bucket: The name of the bucket where the object is copied to.
     ///   - key: The key of the copied object.
+    @discardableResult
     public func copyObject(
         sourceBucket: String,
         sourceKey: String,
         bucket: String,
-        key: String
-    ) async throws {
+        key: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<Void> {
         let encodedBucket = sourceBucket.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sourceBucket
         let encodedKey = sourceKey.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sourceKey
 
-        let headers = [
-            "x-amz-copy-source": "/\(encodedBucket)/\(encodedKey)"
-        ]
+        var headers = sanitize(customHeaders)
+        headers["x-amz-copy-source"] = "/\(encodedBucket)/\(encodedKey)"
 
         let request = try createRequest(
             method: "PUT",
             path: "/\(bucket)/\(key)",
-            headers: HTTPHeaders(headers)
+            headers: headers
         )
 
-        try await executeRequest(request)
+        let (_, http) = try await executeRequest(request)
+
+        return S3Response(
+            result: (),
+            headers: http.stringHeaders
+        )
     }
 
     /// Delete an object.
@@ -404,20 +460,43 @@ public struct S3Client: Sendable {
     /// - Parameters:
     ///   - bucket: The name of the bucket containing the object.
     ///   - key: The key of the object to retrieve metadata for.
+    @discardableResult
     public func deleteObject(
         bucket: String,
-        key: String
-    ) async throws {
+        key: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<Void> {
         let request = try createRequest(
             method: "DELETE",
-            path: "/\(bucket)/\(key)"
+            path: "/\(bucket)/\(key)",
+            headers: sanitize(customHeaders)
         )
 
-        try await executeRequest(request)
+        let (_, http) = try await executeRequest(request)
+
+        return S3Response(
+            result: (),
+            headers: http.stringHeaders
+        )
     }
 }
 
 private extension S3Client {
+
+    static let reservedHeaders: Set<String> = [
+        "authorization",
+        "host",
+        "content-length",
+        "x-amz-date",
+        "x-amz-content-sha256",
+        "x-amz-copy-source"
+    ]
+
+    func sanitize(_ customHeaders: [String: String]) -> HTTPHeaders {
+        HTTPHeaders(
+            customHeaders.filter { !Self.reservedHeaders.contains($0.key.lowercased()) }
+        )
+    }
 
     func createRequest(
         method: String,

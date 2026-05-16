@@ -30,7 +30,7 @@ func copyObject() async throws {
     let sourceMetadata = try await client.headObject(bucket: sourceBucket, key: key)
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
-        _ = try await client.headObject(bucket: destinationBucket, key: key)
+        try await client.headObject(bucket: destinationBucket, key: key)
     }
 
     #expect(sourceMetadata.eTag.isEmpty == false)
@@ -76,7 +76,7 @@ func copyObject_withKeyWithSpaces() async throws {
     let sourceMetadata = try await client.headObject(bucket: sourceBucket, key: key)
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
-        _ = try await client.headObject(bucket: destinationBucket, key: key)
+        try await client.headObject(bucket: destinationBucket, key: key)
     }
 
     #expect(sourceMetadata.eTag.isEmpty == false)
@@ -110,7 +110,7 @@ func copyObject_invalidKey() async throws {
     let key = #function
 
     await #expect {
-        _ = try await client.copyObject(sourceBucket: bucket, sourceKey: key, bucket: bucket, key: key)
+        try await client.copyObject(sourceBucket: bucket, sourceKey: key, bucket: bucket, key: key)
     } throws: { error in
         guard let s3Error = error as? S3Error,
               case let .responseError(statusCode, errorData) = s3Error else {
@@ -129,7 +129,7 @@ func copyObject_invalidBucket() async throws {
     let key = #function
 
     await #expect {
-        _ = try await client.copyObject(sourceBucket: bucket, sourceKey: key, bucket: bucket, key: key)
+        try await client.copyObject(sourceBucket: bucket, sourceKey: key, bucket: bucket, key: key)
     } throws: { error in
         guard let s3Error = error as? S3Error,
               case let .responseError(statusCode, errorData) = s3Error else {

@@ -26,7 +26,7 @@ func getObject() async throws {
 
     let objectData = try await client.getObject(bucket: bucket, key: key)
 
-    #expect(objectData == data)
+    #expect(objectData.result == data)
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
