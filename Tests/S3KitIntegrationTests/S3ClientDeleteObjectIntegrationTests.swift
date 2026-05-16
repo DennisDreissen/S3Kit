@@ -32,7 +32,7 @@ func deleteObject() async throws {
     try await client.deleteObject(bucket: bucket, key: key)
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
-        _ = try await client.headObject(bucket: bucket, key: key)
+        try await client.headObject(bucket: bucket, key: key)
     }
 }
 

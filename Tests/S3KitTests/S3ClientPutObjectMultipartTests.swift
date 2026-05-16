@@ -27,14 +27,16 @@ func createMultipartUpload() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:]
+                headerFields: [
+                    "test-header": "test-value",
+                ]
             )!
         )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    let uploadId = try await client.createMultipartUpload(
+    let data = try await client.createMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg"
     )
@@ -44,6 +46,53 @@ func createMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+
+    #expect(data.result == "test-upload-id")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
+}
+
+@Test
+func createMultipartUpload_withCustomHeaders() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let uploadId = try await client.createMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg",
+        customHeaders: [
+            "x-aws-custom-header": "custom-header-value",
+            "Authorization": "reserved-header",
+            "Host": "reserved-header",
+            "Content-Length": "reserved-header",
+            "x-amz-date": "reserved-header",
+            "x-amz-content-sha256": "reserved-header",
+        ]
+    ).result
+
+    #expect(urlRequest.httpMethod == "POST")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploads=")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
 
     #expect(uploadId == "test-upload-id")
 }
@@ -72,7 +121,7 @@ func createMultipartUpload_withContentType() async throws {
         bucket: "bucket",
         key: "image1.jpg",
         contentType: "some/content-type"
-    )
+    ).result
 
     #expect(urlRequest.httpMethod == "POST")
     #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploads=")
@@ -153,6 +202,7 @@ func uploadPart() async throws {
                 httpVersion: nil,
                 headerFields: [
                     "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -174,6 +224,62 @@ func uploadPart() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
+    #expect(httpClient.capturedBody == someData)
+
+    #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
+    #expect(data.partNumber == 1)
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
+}
+
+@Test
+func uploadPart_withCustomHeaders() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            createMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                ]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    let data = try await client.uploadPart(
+        data: someData,
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id",
+        partNumber: 1,
+        customHeaders: [
+            "x-aws-custom-header": "custom-header-value",
+            "Authorization": "reserved-header",
+            "Host": "reserved-header",
+            "Content-Length": "reserved-header",
+            "x-amz-date": "reserved-header",
+            "x-amz-content-sha256": "reserved-header",
+            "Content-Type": "custom/content-type"
+        ]
+    )
+
+    #expect(urlRequest.httpMethod == "PUT")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?partNumber=1&uploadId=test-upload-id")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "custom/content-type")
     #expect(httpClient.capturedBody == someData)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
@@ -302,14 +408,16 @@ func completeMultipartUpload() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:]
+                headerFields: [
+                    "test-header": "test-value"
+                ]
             )!
         )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    try await client.completeMultipartUpload(
+    let data = try await client.completeMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id",
@@ -324,6 +432,66 @@ func completeMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/xml")
+
+    #expect(urlRequest.httpBody == (
+        "<CompleteMultipartUpload>" +
+        "<Part>" +
+        "<PartNumber>1</PartNumber>" +
+        "<ETag>&quot;e5a8627dc082f11998d9526e6bc1c542&quot;</ETag>" +
+        "</Part>" +
+        "</CompleteMultipartUpload>"
+    ).data(using: .utf8))
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
+}
+
+@Test
+func completeMultipartUpload_withCustomHeaders() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            completeMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    try await client.completeMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id",
+        parts: [
+            S3ObjectPart(partNumber: 1, eTag: "\"e5a8627dc082f11998d9526e6bc1c542\"")
+        ],
+        customHeaders: [
+            "x-aws-custom-header": "custom-header-value",
+            "Authorization": "reserved-header",
+            "Host": "reserved-header",
+            "Content-Length": "reserved-header",
+            "x-amz-date": "reserved-header",
+            "x-amz-content-sha256": "reserved-header",
+            "Content-Type": "custom/content-type"
+        ]
+    )
+
+    #expect(urlRequest.httpMethod == "POST")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "custom/content-type")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
 
     #expect(urlRequest.httpBody == (
         "<CompleteMultipartUpload>" +
@@ -466,14 +634,16 @@ func abortMultipartUpload() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:]
+                headerFields: [
+                    "test-header": "test-value"
+                ]
             )!
         )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    try await client.abortMultipartUpload(
+    let data = try await client.abortMultipartUpload(
         bucket: "bucket",
         key: "image1.jpg",
         uploadId: "test-upload-id"
@@ -484,6 +654,52 @@ func abortMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
+}
+
+@Test
+func abortMultipartUpload_withCustomHeaders() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            completeMultipartUploadData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    try await client.abortMultipartUpload(
+        bucket: "bucket",
+        key: "image1.jpg",
+        uploadId: "test-upload-id",
+        customHeaders: [
+            "x-aws-custom-header": "custom-header-value",
+            "Authorization": "reserved-header",
+            "Host": "reserved-header",
+            "Content-Length": "reserved-header",
+            "x-amz-date": "reserved-header",
+            "x-amz-content-sha256": "reserved-header",
+        ]
+    )
+
+    #expect(urlRequest.httpMethod == "DELETE")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg?uploadId=test-upload-id")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
 }
 
 @Test

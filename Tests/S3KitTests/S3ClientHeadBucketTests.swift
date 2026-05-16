@@ -27,14 +27,16 @@ func headBucket() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:]
+                headerFields: [
+                    "test-header": "test-value",
+                ]
             )!
         )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    try await client.headBucket(
+    let result = try await client.headBucket(
         bucket: "bucket"
     )
 
@@ -43,6 +45,50 @@ func headBucket() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(result.value(forHeaderField: "test-header") == "test-value")
+}
+
+@Test
+func headBucket_withCustomHeaders() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            Data(),
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    try await client.headBucket(
+        bucket: "bucket",
+        customHeaders: [
+            "x-aws-custom-header": "custom-header-value",
+            "Authorization": "reserved-header",
+            "Host": "reserved-header",
+            "Content-Length": "reserved-header",
+            "x-amz-date": "reserved-header",
+            "x-amz-content-sha256": "reserved-header",
+        ]
+    )
+
+    #expect(urlRequest.httpMethod == "HEAD")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
 }
 
 @Test

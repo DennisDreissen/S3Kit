@@ -44,7 +44,7 @@ func headObject_invalidKey() async throws {
     let key = "non-existing-key"
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
-        _ = try await client.headObject(bucket: bucket, key: key)
+        try await client.headObject(bucket: bucket, key: key)
     }
 }
 
@@ -56,6 +56,6 @@ func headObject_invalidBucket() async throws {
     let key = #function
 
     await #expect(throws: S3Error.responseError(statusCode: 404, errorData: nil)) {
-        _ = try await client.headObject(bucket: bucket, key: key)
+        try await client.headObject(bucket: bucket, key: key)
     }
 }

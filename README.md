@@ -23,6 +23,8 @@ try await client.putObject(
     contentType: "image/jpeg"
 )
  ```
+Every method interacting with S3 returns an `S3Response`. This struct contains the result object and a dictionary with all the headers from the S3 HTTP response. This can be useful when you want to use S3 features not covered by this library or in combination with [custom headers](#custom-headers).
+ 
 ## Setup using SPM
 
  ```swift
@@ -181,6 +183,14 @@ try await client.deleteObject(
     key: "example.jpg"
 )
 ```
+
+### Custom headers
+
+All methods support passing a `customHeaders` dictionary. These headers will be passed along to the S3 service and enable you to use features not natively supported by the library, such as setting custom metadata, setting storage classes, access control, object tagging, encryption, checksums and much more. This in combination with the response headers exposed through `S3Response` that every method returns, allows you to use advanced S3 features.
+
+Refer to the [AWS S3 API docs ](https://docs.aws.amazon.com/AmazonS3/latest/API/API_Operations_Amazon_Simple_Storage_Service.html) to read more about which headers are supported and what they do exactly.
+
+**NOTE:** Headers managed internally (`Authorization`, `Host`, `Content-Length`, `x-amz-date`, `x-amz-content-sha256`, `x-amz-copy-source`) are ignored.
 
 ### Errors
 

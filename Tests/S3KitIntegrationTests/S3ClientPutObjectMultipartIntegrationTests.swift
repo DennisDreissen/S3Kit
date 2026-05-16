@@ -17,7 +17,7 @@ func createMultipartUpload() async throws {
     let bucket = "bucket01"
     let key = #function
 
-    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key)
+    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key).result
 
     #expect(uploadId.isEmpty == false)
 
@@ -52,7 +52,7 @@ func uploadPart() async throws {
     let key = #function
     let chunkSize = 5 * 1024 * 1024
 
-    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key)
+    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key).result
 
     let part1 = try await client.uploadPart(
         data: data.prefix(chunkSize),
@@ -92,12 +92,12 @@ func uploadPart() async throws {
             part1,
             part2,
             part3
-        ]
+        ].map(\.result)
     )
 
     let objectData = try await client.getObject(bucket: bucket, key: key)
 
-    #expect(objectData == data)
+    #expect(objectData.result == data)
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
@@ -112,7 +112,7 @@ func uploadPart_withProgressHandler() async throws {
 
     nonisolated(unsafe) var progressHandlerCalls: [Double] = []
 
-    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key)
+    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key).result
 
     let part = try await client.uploadPart(
         data: data,
@@ -130,12 +130,12 @@ func uploadPart_withProgressHandler() async throws {
         bucket: bucket,
         key: key,
         uploadId: uploadId,
-        parts: [part]
+        parts: [part.result]
     )
 
     let objectData = try await client.getObject(bucket: bucket, key: key)
 
-    #expect(objectData == data)
+    #expect(objectData.result == data)
 
     #expect(progressHandlerCalls.isEmpty == false)
     #expect(progressHandlerCalls.last == 1.0)
@@ -158,7 +158,7 @@ func uploadPart_successWithContentType() async throws {
         bucket: bucket,
         key: key,
         contentType: contentType
-    )
+    ).result
 
     let part1 = try await client.uploadPart(
         data: data.prefix(chunkSize),
@@ -198,12 +198,12 @@ func uploadPart_successWithContentType() async throws {
             part1,
             part2,
             part3
-        ]
+        ].map(\.result)
     )
 
     let objectData = try await client.getObject(bucket: bucket, key: key)
 
-    #expect(objectData == data)
+    #expect(objectData.result == data)
 
     let metadata = try await client.headObject(bucket: bucket, key: key)
 
@@ -224,7 +224,7 @@ func uploadPart_abort() async throws {
     let key = #function
     let chunkSize = 5 * 1024 * 1024
 
-    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key)
+    let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key).result
 
     let part1 = try await client.uploadPart(
         data: data.prefix(chunkSize),

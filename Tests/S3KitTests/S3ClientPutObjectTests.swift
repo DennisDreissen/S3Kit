@@ -27,14 +27,16 @@ func putObject() async throws {
                 url: request.url!,
                 statusCode: 200,
                 httpVersion: nil,
-                headerFields: [:]
+                headerFields: [
+                    "test-header": "test-value",
+                ]
             )!
         )
     }
 
     let client = createS3Client(httpClient: httpClient)
 
-    try await client.putObject(
+    let data = try await client.putObject(
         data: someData,
         bucket: "bucket",
         key: "image1.jpg"
@@ -47,6 +49,57 @@ func putObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
+    #expect(httpClient.capturedBody == someData)
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
+}
+
+@Test
+func putObject_withCustomHeaders() async throws {
+    nonisolated(unsafe) var urlRequest: URLRequest!
+
+    let httpClient = MockS3HTTPClient { request in
+        urlRequest = request
+
+        return (
+            someData,
+            HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: [:]
+            )!
+        )
+    }
+
+    let client = createS3Client(httpClient: httpClient)
+
+    try await client.putObject(
+        data: someData,
+        bucket: "bucket",
+        key: "image1.jpg",
+        contentType: "image/jpeg",
+        customHeaders: [
+            "x-aws-custom-header": "custom-header-value",
+            "Authorization": "reserved-header",
+            "Host": "reserved-header",
+            "Content-Length": "reserved-header",
+            "x-amz-date": "reserved-header",
+            "x-amz-content-sha256": "reserved-header",
+            "Content-Type": "custom/content-type"
+        ]
+    )
+
+    #expect(urlRequest.httpMethod == "PUT")
+    #expect(urlRequest.url?.absoluteString == "https://example.local/bucket/image1.jpg")
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "Authorization") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
+    #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "custom/content-type")
+    #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
     #expect(httpClient.capturedBody == someData)
 }
 
