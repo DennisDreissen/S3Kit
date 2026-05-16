@@ -37,6 +37,40 @@ func putObject() async throws {
 }
 
 @Test
+func putObject_withProgressHandler() async throws {
+    let client = createS3Client()
+
+    let data = randomData(megabytes: 10)
+    let bucket = "bucket01"
+    let key = #function
+    let contentType = "application/pdf"
+
+    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
+
+    try await client.putObject(
+        data: data,
+        bucket: bucket,
+        key: key,
+        contentType: contentType
+    ) { progress in
+        progressHandlerCalls.append(progress)
+    }
+
+    let metadata = try await client.headObject(bucket: bucket, key: key)
+
+    #expect(metadata.eTag.isEmpty == false)
+    #expect(metadata.size == data.count)
+    #expect(metadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(metadata.contentType == contentType)
+
+    #expect(progressHandlerCalls.isEmpty == false)
+    #expect(progressHandlerCalls.last == 1.0)
+    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
+
+    try await client.deleteObject(bucket: bucket, key: key)
+}
+
+@Test
 func putObject_withoutContentType() async throws {
     let client = createS3Client()
 

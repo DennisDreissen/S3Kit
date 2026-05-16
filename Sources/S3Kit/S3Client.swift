@@ -36,59 +36,19 @@ public struct S3Client: Sendable {
     ///   - endpoint: The endpoint URL of the S3 service.
     ///   - region: The region. Not required for all S3-compatible providers.
     ///   - credentials: The credentials used to sign requests.
-    ///   - httpClient: The S3HTTPClient used to execute the requests. Defaults to URLSession.shared.
+    ///   - httpClient: The S3HTTPClient used to execute the requests.
     public init(
         endpoint: URL,
         region: String? = nil,
         signerAlgorithm: S3SignerAlgorithm = .sigV4,
         credentials: S3CredentialsProvider,
-        httpClient: S3HTTPClient
+        httpClient: S3HTTPClient = S3DefaultHTTPClient()
     ) {
         self.endpoint = endpoint
         self.region = region
         self.signerAlgorithm = signerAlgorithm
         self.credentials = credentials
         self.httpClient = httpClient
-    }
-
-    /// Create an S3 client.
-    ///
-    /// - Parameters:
-    ///   - endpoint: The endpoint URL of the S3 service.
-    ///   - region: The region. Not required for all S3-compatible providers.
-    ///   - credentials: The credentials used to sign requests.
-    public init(
-        endpoint: URL,
-        region: String? = nil,
-        signerAlgorithm: S3SignerAlgorithm = .sigV4,
-        credentials: S3CredentialsProvider
-    ) {
-        self.endpoint = endpoint
-        self.region = region
-        self.signerAlgorithm = signerAlgorithm
-        self.credentials = credentials
-        self.httpClient = DefaultS3HTTPClient()
-    }
-
-    /// Create an S3 client.
-    ///
-    /// - Parameters:
-    ///   - endpoint: The endpoint URL of the S3 service.
-    ///   - region: The region. Not required for all S3-compatible providers.
-    ///   - credentials: The credentials used to sign requests.
-    ///   - urlSession: The URLSession used to execute the requests.
-    public init(
-        endpoint: URL,
-        region: String? = nil,
-        signerAlgorithm: S3SignerAlgorithm = .sigV4,
-        credentials: S3CredentialsProvider,
-        urlSession: URLSession
-    ) {
-        self.endpoint = endpoint
-        self.region = region
-        self.signerAlgorithm = signerAlgorithm
-        self.credentials = credentials
-        self.httpClient = DefaultS3HTTPClient(session: urlSession)
     }
 
     /// Check if a bucket exists and caller has access to it.
@@ -209,24 +169,28 @@ public struct S3Client: Sendable {
     ///   - bucket: The name of the bucket where the object is uploaded to.
     ///   - key: The key of the object.
     ///   - contentType: A MIME type describing the format of the object data.
+    ///   - progressHandler: A callback that reports the upload progress as a Double from 0-1.
     public func putObject(
         data: Data,
         bucket: String,
         key: String,
-        contentType: String? = nil
+        contentType: String? = nil,
+        progressHandler: (@Sendable (Double) -> Void)? = nil
     ) async throws {
         let headers = [
             "Content-Type": contentType
         ]
 
-        let request = try createRequest(
+        var request = try createRequest(
             method: "PUT",
             path: "/\(bucket)/\(key)",
             headers: HTTPHeaders(headers.compactMapValues { $0 }),
             body: data
         )
 
-        try await executeRequest(request)
+        request.httpBody = nil
+
+        try await executeUploadRequest(request, data: data, progressHandler: progressHandler)
     }
 
     /// Initiate a new multipart upload.
@@ -269,13 +233,15 @@ public struct S3Client: Sendable {
     ///   - key: The key of the object.
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
     ///   - partNumber: Part number of part being uploaded.
+    ///   - progressHandler: A callback that reports the upload progress as a Double from 0-1.
     /// - Returns: An object containing the `partNumber` and `eTag` of the uploaded part.  Pass these to `completeMultipartUpload` when all parts are uploaded.
     public func uploadPart(
         data: Data,
         bucket: String,
         key: String,
         uploadId: String,
-        partNumber: Int
+        partNumber: Int,
+        progressHandler: (@Sendable (Double) -> Void)? = nil
     ) async throws -> S3ObjectPart {
         let headers = [
             "Content-Type": "application/octet-stream"
@@ -286,7 +252,7 @@ public struct S3Client: Sendable {
             URLQueryItem(name: "uploadId", value: uploadId)
         ]
 
-        let request = try createRequest(
+        var request = try createRequest(
             method: "PUT",
             path: "/\(bucket)/\(key)",
             queryItems: queryItems,
@@ -294,7 +260,9 @@ public struct S3Client: Sendable {
             body: data
         )
 
-        let (_, http) = try await executeRequest(request)
+        request.httpBody = nil
+
+        let (_, http) = try await executeUploadRequest(request, data: data, progressHandler: progressHandler)
 
         guard let eTag = http.value(forHTTPHeaderField: "ETag") else {
             throw S3Error.missingResponseHeader("ETag")
@@ -304,6 +272,42 @@ public struct S3Client: Sendable {
             partNumber: partNumber,
             eTag: eTag
         )
+    }
+
+    /// List parts.
+    ///
+    /// - Parameters:
+    ///   - bucket: The name of the bucket containing the part.
+    ///   - key: The key of the object.
+    ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
+    ///   - partNumberMarker: The marker returned by a previous `listParts` call to retrieve the next page of results.
+    ///   - maxParts: The maximum number of parts to return per page.
+    /// - Returns: A response containing the list of parts and a part number marker if more results are available.
+    public func listParts(
+        bucket: String,
+        key: String,
+        uploadId: String,
+        partNumberMarker: Int? = nil,
+        maxParts: Int? = nil
+    ) async throws -> S3ListParts {
+        let queryItems: [URLQueryItem] = [
+            URLQueryItem(name: "uploadId", value: uploadId),
+            URLQueryItem(name: "part-number-marker", value: partNumberMarker.map(String.init)),
+            URLQueryItem(name: "max-parts", value: maxParts.map(String.init))
+        ]
+
+        let request = try createRequest(
+            method: "GET",
+            path: "/\(bucket)/\(key)",
+            queryItems: queryItems.filter { $0.value != nil }
+        )
+
+        let (data, _) = try await executeRequest(request)
+
+        return try decode(
+            ListPartsResponse.self,
+            from: data
+        ).s3ListParts
     }
 
     /// Complete a multipart upload.
@@ -474,6 +478,32 @@ private extension S3Client {
     @discardableResult
     func executeRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, urlResponse) = try await httpClient.data(for: request)
+
+        guard let httpUrlResponse = urlResponse as? HTTPURLResponse else {
+            throw S3Error.invalidResponse
+        }
+
+        guard (200..<300).contains(httpUrlResponse.statusCode) else {
+            throw S3Error.responseError(
+                statusCode: httpUrlResponse.statusCode,
+                errorData: try? decode(ErrorDataResponse.self, from: data).s3ErrorData
+            )
+        }
+
+        return (data, httpUrlResponse)
+    }
+
+    @discardableResult
+    func executeUploadRequest(
+        _ request: URLRequest,
+        data: Data,
+        progressHandler: (@Sendable (Double) -> Void)? = nil
+    ) async throws -> (Data, HTTPURLResponse) {
+        let (data, urlResponse) = try await httpClient.upload(
+            for: request,
+            from: data,
+            progressHandler: progressHandler
+        )
 
         guard let httpUrlResponse = urlResponse as? HTTPURLResponse else {
             throw S3Error.invalidResponse

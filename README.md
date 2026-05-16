@@ -80,10 +80,14 @@ try await client.putObject(
     bucket: "bucket",
     key: "example.jpg",
     contentType: "image/jpeg"
-)
+) { progress in
+  // Upload progress ranging from 0-1.
+}
 ```
 
 ### Multipart object uploads
+
+#### Create multipart upload
 
 Initiate a new multipart upload. The `uploadId` should be passed to all other multipart related calls.
 
@@ -95,6 +99,8 @@ let uploadId = try await client.createMultipartUpload(
 )
 ```
 
+#### Upload part
+
 Upload a part. The returned `objectPart` from all parts uploaded should be passed to the `completeMultipartUpload` method.
 
 ```swift
@@ -104,8 +110,34 @@ let objectPart = try await client.uploadPart(
     key: "example.jpg",
     uploadId: "uploadId",
     partNumber: 1
+) { progress in
+  // Upload progress ranging from 0-1.
+}
+```
+
+#### List parts
+
+List all parts in a bucket for a given upload id. The max parts and part number marker can be used to achieve pagination.
+
+```swift
+let partsData = try await client.listParts(
+    bucket: "bucket",
+    key: "example.jpg",
+    uploadId: "uploadId",
 )
 ```
+
+```swift
+let partsData = try await client.listParts(
+    bucket: "bucket",
+    key: "example.jpg",
+    uploadId: "uploadId",
+    partNumberMarker: 10,
+    maxParts: 25
+)
+```
+
+#### Complete multipart upload
 
 Complete a multipart upload. Pass all the parts received from the `uploadPart` methods. The order of the parts in the array does not matter, parts will be sorted based on their `partNumber` before being sent to the S3 service.
 
@@ -117,6 +149,8 @@ try await client.completeMultipartUpload(
     parts: [objectPart1, objectPart2]
 )
 ```
+
+#### Abort multipart upload
 
 Abort a multipart upload. This should be called to cancel an initiated multipart upload. Make sure to call this method when receiving an error on `uploadPart` or `completeMultipartUpload` to let the server know to clean up remaining state for the multipart upload.
 
