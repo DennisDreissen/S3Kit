@@ -64,7 +64,7 @@ func listParts() async throws {
         size: 1234567,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

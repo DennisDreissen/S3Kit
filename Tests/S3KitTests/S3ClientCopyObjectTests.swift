@@ -49,7 +49,7 @@ func copyObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-copy-source") == "/sourceBucket/image1.jpg")
-    #expect(result.headers["test-header"] == "test-value")
+    #expect(result.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

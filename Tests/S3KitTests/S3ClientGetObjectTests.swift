@@ -48,7 +48,7 @@ func getObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
     #expect(data.result == someData)
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

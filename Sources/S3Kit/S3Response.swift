@@ -18,4 +18,8 @@ public struct S3Response<Result: Sendable>: Sendable {
     public subscript<T>(dynamicMember keyPath: KeyPath<Result, T>) -> T {
         result[keyPath: keyPath]
     }
+
+    public func value(forHeaderField key: String) -> String? {
+        headers.first { $0.key.caseInsensitiveCompare(key) == .orderedSame }?.value
+    }
 }

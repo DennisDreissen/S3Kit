@@ -55,7 +55,7 @@ func headObject() async throws {
     #expect(data.size == 7195686)
     #expect(data.lastModified == rfcDateFormatter.date(from: "Tue, 01 May 2000 18:30:59 GMT"))
     #expect(data.contentType == "image/jpeg")
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

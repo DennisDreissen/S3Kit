@@ -48,7 +48,7 @@ func createMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
 
     #expect(data.result == "test-upload-id")
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -228,7 +228,7 @@ func uploadPart() async throws {
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.partNumber == 1)
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -441,7 +441,7 @@ func completeMultipartUpload() async throws {
         "</Part>" +
         "</CompleteMultipartUpload>"
     ).data(using: .utf8))
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test
@@ -654,7 +654,7 @@ func abortMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

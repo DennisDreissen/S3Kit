@@ -50,7 +50,7 @@ func putObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
     #expect(httpClient.capturedBody == someData)
-    #expect(data.headers["test-header"] == "test-value")
+    #expect(data.value(forHeaderField: "test-header") == "test-value")
 }
 
 @Test

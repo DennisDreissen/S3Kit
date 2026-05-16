@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "S3Kit",
     platforms: [
-        .iOS(.v13), .macOS(.v12), .tvOS(.v13), .visionOS(.v1)
+        .iOS(.v15), .macOS(.v12), .tvOS(.v15), .visionOS(.v1)
     ],
     products: [
         .library(
