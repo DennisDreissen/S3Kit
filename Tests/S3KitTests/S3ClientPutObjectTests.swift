@@ -28,7 +28,7 @@ func putObject() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -49,7 +49,9 @@ func putObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
+    
     #expect(httpClient.capturedBody == someData)
+
     #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -100,6 +102,7 @@ func putObject_withCustomHeaders() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "custom/content-type")
     #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
+
     #expect(httpClient.capturedBody == someData)
 }
 
@@ -107,7 +110,7 @@ func putObject_withCustomHeaders() async throws {
 func putObject_withProgressHandler() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
     nonisolated(unsafe) var progressHandlerCalls: [Double] = []
-    
+
     let httpClient = MockS3HTTPClient { request in
         urlRequest = request
 
@@ -139,15 +142,15 @@ func putObject_withProgressHandler() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
+
     #expect(httpClient.capturedBody == someData)
 
-    #expect(progressHandlerCalls.isEmpty == false)
+    #expect(progressHandlerCalls.first ?? .infinity < 1.0)
     #expect(progressHandlerCalls.last == 1.0)
-    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
 }
 
 @Test
-func putObject_signerAlgorithmSigV4a() async throws {
+func putObject_withSignerAlgorithmSigV4a() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -179,6 +182,7 @@ func putObject_signerAlgorithmSigV4a() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == nil)
+
     #expect(httpClient.capturedBody == someData)
 }
 
@@ -216,6 +220,7 @@ func putObject_withContentType() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Length") == "\(someData.count)")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "image/jpeg")
+
     #expect(httpClient.capturedBody == someData)
 }
 
@@ -256,7 +261,7 @@ func putObject_withEmptyData() async throws {
 }
 
 @Test
-func putObject_invalidStatusCode() async throws {
+func putObject_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,

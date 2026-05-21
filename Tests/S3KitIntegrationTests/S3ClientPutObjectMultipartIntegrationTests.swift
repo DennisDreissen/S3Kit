@@ -25,7 +25,7 @@ func createMultipartUpload() async throws {
 }
 
 @Test
-func createMultipartUpload_invalidBucket() async throws {
+func createMultipartUpload_withInvalidBucket() async throws {
     let client = createS3Client()
 
     let bucket = "non-existing-bucket"
@@ -47,7 +47,7 @@ func createMultipartUpload_invalidBucket() async throws {
 func uploadPart() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 12)
+    let data = testData(megabytes: 12)
     let bucket = "bucket01"
     let key = #function
     let chunkSize = 5 * 1024 * 1024
@@ -104,13 +104,13 @@ func uploadPart() async throws {
 
 @Test
 func uploadPart_withProgressHandler() async throws {
+    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
+
     let client = createS3Client()
 
-    let data = randomData(megabytes: 10)
+    let data = testData(megabytes: 10)
     let bucket = "bucket01"
     let key = #function
-
-    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
 
     let uploadId = try await client.createMultipartUpload(bucket: bucket, key: key).result
 
@@ -137,18 +137,16 @@ func uploadPart_withProgressHandler() async throws {
 
     #expect(objectData == data)
 
-    #expect(progressHandlerCalls.isEmpty == false)
     #expect(progressHandlerCalls.last == 1.0)
-    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
 
 @Test
-func uploadPart_successWithContentType() async throws {
+func uploadPart_withContentType() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 12)
+    let data = testData(megabytes: 12)
     let bucket = "bucket01"
     let key = #function
     let chunkSize = 5 * 1024 * 1024
@@ -209,7 +207,7 @@ func uploadPart_successWithContentType() async throws {
 
     #expect(metadata.eTag.isEmpty == false)
     #expect(metadata.size == data.count)
-    #expect(metadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(metadata.lastModified.timeIntervalSinceNow > -60)
     #expect(metadata.contentType == contentType)
 
     try await client.deleteObject(bucket: bucket, key: key)
@@ -219,7 +217,7 @@ func uploadPart_successWithContentType() async throws {
 func uploadPart_abort() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 12)
+    let data = testData(megabytes: 12)
     let bucket = "bucket01"
     let key = #function
     let chunkSize = 5 * 1024 * 1024

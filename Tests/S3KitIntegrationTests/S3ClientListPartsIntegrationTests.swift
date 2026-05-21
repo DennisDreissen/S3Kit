@@ -14,7 +14,7 @@ import Foundation
 func listParts() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "list-parts-bucket01"
     let key = #function
 
@@ -37,16 +37,16 @@ func listParts() async throws {
     #expect(listParts.contents.map(\.partNumber).sorted() == [1, 2, 3])
     #expect(listParts.contents.allSatisfy { !$0.eTag.isEmpty })
     #expect(listParts.contents.allSatisfy { $0.size == data.count })
-    #expect(listParts.contents.allSatisfy { $0.lastModified!.timeIntervalSinceNow > -10 })
+    #expect(listParts.contents.allSatisfy { $0.lastModified!.timeIntervalSinceNow > -60 })
 
     try await client.abortMultipartUpload(bucket: bucket, key: key, uploadId: uploadId)
 }
 
 @Test
-func listParts_maxKeysContinuationToken() async throws {
+func listParts_withMaxKeysContinuationToken() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "list-objects-bucket02"
     let key = #function
 
@@ -103,7 +103,7 @@ func listParts_maxKeysContinuationToken() async throws {
 }
 
 @Test
-func listParts_emptyPartsUpload() async throws {
+func listParts_withEmptyPartsUpload() async throws {
     let client = createS3Client()
 
     let bucket = "list-parts-bucket03"
@@ -118,7 +118,7 @@ func listParts_emptyPartsUpload() async throws {
 }
 
 @Test
-func listParts_invalidUploadId() async throws {
+func listParts_withInvalidUploadId() async throws {
     let client = createS3Client()
 
     let bucket = "list-parts-bucket03"

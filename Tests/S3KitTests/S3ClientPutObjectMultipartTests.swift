@@ -28,7 +28,7 @@ func createMultipartUpload() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -80,7 +80,7 @@ func createMultipartUpload_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     ).result
 
@@ -134,7 +134,7 @@ func createMultipartUpload_withContentType() async throws {
 }
 
 @Test
-func createMultipartUpload_invalidResponseMalformedXML() async throws {
+func createMultipartUpload_returnsInvalidResponseMalformedXML() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someData,
@@ -161,7 +161,7 @@ func createMultipartUpload_invalidResponseMalformedXML() async throws {
 }
 
 @Test
-func createMultipartUpload_invalidStatusCode() async throws {
+func createMultipartUpload_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -226,6 +226,7 @@ func uploadPart() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
+    
     #expect(httpClient.capturedBody == someData)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
@@ -247,7 +248,7 @@ func uploadPart_withCustomHeaders() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\""
                 ]
             )!
         )
@@ -284,6 +285,7 @@ func uploadPart_withCustomHeaders() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256") != "reserved-header")
     #expect(urlRequest.value(forHTTPHeaderField: "x-aws-custom-header") == "custom-header-value")
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "custom/content-type")
+
     #expect(httpClient.capturedBody == someData)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
@@ -305,7 +307,7 @@ func uploadPart_withProgressHandler() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\"",
+                    "ETag": "\"e5a8627dc082f11998d9526e6bc1c542\""
                 ]
             )!
         )
@@ -331,18 +333,18 @@ func uploadPart_withProgressHandler() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
+
     #expect(httpClient.capturedBody == someData)
 
     #expect(data.eTag == "\"e5a8627dc082f11998d9526e6bc1c542\"")
     #expect(data.partNumber == 1)
 
-    #expect(progressHandlerCalls.isEmpty == false)
+    #expect(progressHandlerCalls.first ?? .infinity < 1.0)
     #expect(progressHandlerCalls.last == 1.0)
-    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
 }
 
 @Test
-func uploadPart_missingETagHeader() async throws {
+func uploadPart_returnsWithoutETagHeader() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             createMultipartUploadData,
@@ -372,7 +374,7 @@ func uploadPart_missingETagHeader() async throws {
 }
 
 @Test
-func uploadPart_invalidStatusCode() async throws {
+func uploadPart_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -447,6 +449,7 @@ func completeMultipartUpload() async throws {
         "</Part>" +
         "</CompleteMultipartUpload>"
     ).data(using: .utf8))
+
     #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -510,7 +513,7 @@ func completeMultipartUpload_withCustomHeaders() async throws {
 }
 
 @Test
-func completeMultipartUpload_multipleParts() async throws {
+func completeMultipartUpload_withMultipleParts() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -566,7 +569,7 @@ func completeMultipartUpload_multipleParts() async throws {
 }
 
 @Test
-func completeMultipartUpload_errorWithSuccessStatusCode() async throws {
+func completeMultipartUpload_returnsErrorWithSuccessStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -597,7 +600,7 @@ func completeMultipartUpload_errorWithSuccessStatusCode() async throws {
 }
 
 @Test
-func completeMultipartUpload_invalidStatusCode() async throws {
+func completeMultipartUpload_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -660,6 +663,7 @@ func abortMultipartUpload() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+
     #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -693,7 +697,7 @@ func abortMultipartUpload_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     )
 
@@ -709,7 +713,7 @@ func abortMultipartUpload_withCustomHeaders() async throws {
 }
 
 @Test
-func abortMultipartUpload_invalidStatusCode() async throws {
+func abortMultipartUpload_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,

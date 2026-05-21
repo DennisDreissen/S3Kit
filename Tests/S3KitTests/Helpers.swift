@@ -25,6 +25,14 @@ let someError = S3ErrorData(
     requestId: "ExampleRequestID"
 )
 
+func testData(kilobytes: Int) -> Data {
+    var data = Data(count: kilobytes * 1024)
+    data.withUnsafeMutableBytes {
+        arc4random_buf($0.baseAddress!, $0.count)
+    }
+    return data
+}
+
 let rfcDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
@@ -36,6 +44,14 @@ let rfcDateFormatter: DateFormatter = {
 let iso8601DateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(abbreviation: "UTC")
+    return formatter
+}()
+
+let iso8601WithoutFractional: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.timeZone = TimeZone(abbreviation: "UTC")
     return formatter
@@ -59,4 +75,11 @@ func createS3Client(
         ),
         httpClient: httpClient
     )
+}
+
+extension AsyncThrowingStream where Element == Data {
+
+    func collect() async throws -> Data {
+        try await reduce(into: Data()) { @Sendable in $0.append($1) }
+    }
 }

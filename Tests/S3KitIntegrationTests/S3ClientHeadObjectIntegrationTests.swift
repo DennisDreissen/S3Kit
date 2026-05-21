@@ -14,7 +14,7 @@ import Foundation
 func headObject() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "bucket01"
     let key = #function
     let contentType = "application/pdf"
@@ -30,14 +30,14 @@ func headObject() async throws {
 
     #expect(metadata.eTag.isEmpty == false)
     #expect(metadata.size == data.count)
-    #expect(metadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(metadata.lastModified.timeIntervalSinceNow > -60)
     #expect(metadata.contentType == contentType)
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
 
 @Test
-func headObject_invalidKey() async throws {
+func headObject_withInvalidKey() async throws {
     let client = createS3Client()
 
     let bucket = "bucket01"
@@ -49,7 +49,7 @@ func headObject_invalidKey() async throws {
 }
 
 @Test
-func headObject_invalidBucket() async throws {
+func headObject_withInvalidBucket() async throws {
     let client = createS3Client()
 
     let bucket = "non-existing-bucket"

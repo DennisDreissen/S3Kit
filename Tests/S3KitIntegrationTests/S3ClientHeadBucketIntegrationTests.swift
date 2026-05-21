@@ -20,7 +20,7 @@ func headBucket() async throws {
 }
 
 @Test
-func headBucket_invalidBucket() async throws {
+func headBucket_withInvalidBucket() async throws {
     let client = createS3Client()
 
     let bucket = "non-existing-bucket"

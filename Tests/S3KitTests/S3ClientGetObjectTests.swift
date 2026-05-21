@@ -28,7 +28,7 @@ func getObject() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -80,7 +80,7 @@ func getObject_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     )
 
@@ -98,7 +98,7 @@ func getObject_withCustomHeaders() async throws {
 }
 
 @Test
-func getObject_invalidStatusCode() async throws {
+func getObject_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -125,7 +125,7 @@ func getObject_invalidStatusCode() async throws {
 }
 
 @Test
-func getObject_invalidStatusCodeWithInvalidErrorBody() async throws {
+func getObject_returnsInvalidStatusCodeWithInvalidErrorBody() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someData,

@@ -28,7 +28,7 @@ func deleteObject() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -46,6 +46,7 @@ func deleteObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "Authorization")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
+    
     #expect(result.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -78,7 +79,7 @@ func deleteObject_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     )
 
@@ -94,7 +95,7 @@ func deleteObject_withCustomHeaders() async throws {
 }
 
 @Test
-func deleteObject_invalidStatusCode() async throws {
+func deleteObject_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
