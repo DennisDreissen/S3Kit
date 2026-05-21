@@ -383,7 +383,7 @@ struct AWSSigner: Sendable {
                 "authorization",
                 "content-length",
                 "expect",
-                "user-agent",
+                "user-agent"
             ]
             var headersToSign: [String: String] = [:]
             var signedHeadersArray: [String] = []

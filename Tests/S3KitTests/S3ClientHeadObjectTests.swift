@@ -32,7 +32,7 @@ func headObject() async throws {
                     "Content-Length": "7195686",
                     "Last-Modified": "Tue, 01 May 2000 18:30:59 GMT",
                     "Content-Type": "image/jpeg",
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -57,6 +57,7 @@ func headObject() async throws {
     #expect(data.size == 7195686)
     #expect(data.lastModified == rfcDateFormatter.date(from: "Tue, 01 May 2000 18:30:59 GMT"))
     #expect(data.contentType == "image/jpeg")
+    
     #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -94,7 +95,7 @@ func headObject_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     )
 
@@ -160,7 +161,7 @@ func headObject_withoutContentType() async throws {
 }
 
 @Test
-func headObject_missingETagHeader() async throws {
+func headObject_returnsWithoutETagHeader() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
@@ -188,7 +189,7 @@ func headObject_missingETagHeader() async throws {
 }
 
 @Test
-func headObject_missingContentLengthHeader() async throws {
+func headObject_returnsWithoutContentLengthHeader() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
@@ -216,7 +217,7 @@ func headObject_missingContentLengthHeader() async throws {
 }
 
 @Test
-func headObject_invalidContentLengthHeader() async throws {
+func headObject_returnsInvalidContentLengthHeader() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
@@ -245,7 +246,7 @@ func headObject_invalidContentLengthHeader() async throws {
 }
 
 @Test
-func headObject_missingLastModifiedHeader() async throws {
+func headObject_returnsWithoutLastModifiedHeader() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
@@ -273,7 +274,7 @@ func headObject_missingLastModifiedHeader() async throws {
 }
 
 @Test
-func headObject_invalidLastModifiedHeader() async throws {
+func headObject_returnsInvalidLastModifiedHeader() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             Data(),
@@ -302,7 +303,7 @@ func headObject_invalidLastModifiedHeader() async throws {
 }
 
 @Test
-func headObject_invalidStatusCode() async throws {
+func headObject_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,

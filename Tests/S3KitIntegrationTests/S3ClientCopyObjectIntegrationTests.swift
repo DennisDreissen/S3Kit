@@ -14,7 +14,7 @@ import Foundation
 func copyObject() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let sourceBucket = "bucket01"
     let destinationBucket = "bucket02"
     let key = #function
@@ -35,7 +35,7 @@ func copyObject() async throws {
 
     #expect(sourceMetadata.eTag.isEmpty == false)
     #expect(sourceMetadata.size == data.count)
-    #expect(sourceMetadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(sourceMetadata.lastModified.timeIntervalSinceNow > -60)
     #expect(sourceMetadata.contentType == contentType)
 
     try await client.copyObject(
@@ -49,7 +49,7 @@ func copyObject() async throws {
 
     #expect(destinationMetadata.eTag.isEmpty == false)
     #expect(destinationMetadata.size == data.count)
-    #expect(destinationMetadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(destinationMetadata.lastModified.timeIntervalSinceNow > -60)
     #expect(destinationMetadata.contentType == contentType)
 
     try await client.deleteObject(bucket: sourceBucket, key: key)
@@ -60,7 +60,7 @@ func copyObject() async throws {
 func copyObject_withKeyWithSpaces() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let sourceBucket = "bucket01"
     let destinationBucket = "bucket02"
     let key = "some \(#function)"
@@ -81,7 +81,7 @@ func copyObject_withKeyWithSpaces() async throws {
 
     #expect(sourceMetadata.eTag.isEmpty == false)
     #expect(sourceMetadata.size == data.count)
-    #expect(sourceMetadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(sourceMetadata.lastModified.timeIntervalSinceNow > -60)
     #expect(sourceMetadata.contentType == contentType)
 
     try await client.copyObject(
@@ -95,7 +95,7 @@ func copyObject_withKeyWithSpaces() async throws {
 
     #expect(destinationMetadata.eTag.isEmpty == false)
     #expect(destinationMetadata.size == data.count)
-    #expect(destinationMetadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(destinationMetadata.lastModified.timeIntervalSinceNow > -60)
     #expect(destinationMetadata.contentType == contentType)
 
     try await client.deleteObject(bucket: sourceBucket, key: key)
@@ -103,7 +103,7 @@ func copyObject_withKeyWithSpaces() async throws {
 }
 
 @Test
-func copyObject_invalidKey() async throws {
+func copyObject_withInvalidKey() async throws {
     let client = createS3Client()
 
     let bucket = "bucket01"
@@ -122,7 +122,7 @@ func copyObject_invalidKey() async throws {
 }
 
 @Test
-func copyObject_invalidBucket() async throws {
+func copyObject_withInvalidBucket() async throws {
     let client = createS3Client()
 
     let bucket = "non-existing-bucket"

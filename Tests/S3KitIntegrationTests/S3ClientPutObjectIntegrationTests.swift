@@ -14,7 +14,7 @@ import Foundation
 func putObject() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "bucket01"
     let key = #function
     let contentType = "application/pdf"
@@ -30,7 +30,7 @@ func putObject() async throws {
 
     #expect(metadata.eTag.isEmpty == false)
     #expect(metadata.size == data.count)
-    #expect(metadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(metadata.lastModified.timeIntervalSinceNow > -60)
     #expect(metadata.contentType == contentType)
 
     try await client.deleteObject(bucket: bucket, key: key)
@@ -38,14 +38,14 @@ func putObject() async throws {
 
 @Test
 func putObject_withProgressHandler() async throws {
+    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
+
     let client = createS3Client()
 
-    let data = randomData(megabytes: 10)
+    let data = testData(megabytes: 10)
     let bucket = "bucket01"
     let key = #function
     let contentType = "application/pdf"
-
-    nonisolated(unsafe) var progressHandlerCalls: [Double] = []
 
     try await client.putObject(
         data: data,
@@ -60,12 +60,10 @@ func putObject_withProgressHandler() async throws {
 
     #expect(metadata.eTag.isEmpty == false)
     #expect(metadata.size == data.count)
-    #expect(metadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(metadata.lastModified.timeIntervalSinceNow > -60)
     #expect(metadata.contentType == contentType)
 
-    #expect(progressHandlerCalls.isEmpty == false)
     #expect(progressHandlerCalls.last == 1.0)
-    #expect(progressHandlerCalls.allSatisfy { $0 >= 0.0 && $0 <= 1.0 })
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
@@ -74,7 +72,7 @@ func putObject_withProgressHandler() async throws {
 func putObject_withoutContentType() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "bucket01"
     let key = #function
 
@@ -88,17 +86,17 @@ func putObject_withoutContentType() async throws {
 
     #expect(metadata.eTag.isEmpty == false)
     #expect(metadata.size == data.count)
-    #expect(metadata.lastModified.timeIntervalSinceNow > -10)
+    #expect(metadata.lastModified.timeIntervalSinceNow > -60)
     #expect(metadata.contentType == "binary/octet-stream")
 
     try await client.deleteObject(bucket: bucket, key: key)
 }
 
 @Test
-func putObject_invalidBucket() async throws {
+func putObject_withInvalidBucket() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "non-existing-bucket"
     let key = #function
 

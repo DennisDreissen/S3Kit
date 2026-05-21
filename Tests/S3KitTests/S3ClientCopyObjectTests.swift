@@ -28,7 +28,7 @@ func copyObject() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -49,6 +49,7 @@ func copyObject() async throws {
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-date")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-content-sha256")?.isEmpty == false)
     #expect(urlRequest.value(forHTTPHeaderField: "x-amz-copy-source") == "/sourceBucket/image1.jpg")
+    
     #expect(result.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -84,7 +85,7 @@ func copyObject_withCustomHeaders() async throws {
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
             "x-amz-content-sha256": "reserved-header",
-            "x-amz-copy-source": "reserved-header",
+            "x-amz-copy-source": "reserved-header"
         ]
     )
 
@@ -101,7 +102,7 @@ func copyObject_withCustomHeaders() async throws {
 }
 
 @Test
-func copyObject_spaceEncodedKey() async throws {
+func copyObject_withSpaceEncodedKey() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -136,7 +137,7 @@ func copyObject_spaceEncodedKey() async throws {
 }
 
 @Test
-func copyObject_invalidStatusCode() async throws {
+func copyObject_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,

@@ -74,6 +74,14 @@ let response = try await client.listObjects(
 let response = try await client.getObject(bucket: "bucket", key: "example.jpg")
 ```
 
+### Download object
+
+Downloads an object and stores it on the disk, unlike `getObject` which stores it in memory and returns the data.
+
+```swift
+let response = try await client.downloadObject(bucket: "bucket", key: "example.jpg")
+```
+
 ### Put object
 
 ```swift
@@ -125,7 +133,7 @@ List all parts in a bucket for a given upload id. The max parts and part number 
 let response = try await client.listParts(
     bucket: "bucket",
     key: "example.jpg",
-    uploadId: "uploadId",
+    uploadId: "uploadId"
 )
 ```
 

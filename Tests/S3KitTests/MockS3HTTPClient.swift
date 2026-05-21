@@ -29,15 +29,28 @@ final class MockS3HTTPClient: S3HTTPClient, Sendable {
         return try handler(request)
     }
 
+    func download(
+        for request: URLRequest
+    ) async throws -> (URL, URLResponse) {
+        let (data, response) = try handler(request)
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try data.write(to: url)
+
+        capturedBody = data
+        return (url, response)
+    }
+
     func upload(
         for request: URLRequest,
         from data: Data,
-        progressHandler: (@Sendable (Double) -> Void)?
+        progressHandler: S3HTTPClient.ProgressHandler?
     ) async throws -> (Data, URLResponse) {
-        progressHandler?(0.3)
-        progressHandler?(0.6)
-        progressHandler?(0.9)
-        progressHandler?(1.0)
+        let simulatedSize = Int64(data.count / 3)
+        progressHandler?(simulatedSize, simulatedSize, Int64(data.count))
+        progressHandler?(simulatedSize, simulatedSize * 2, Int64(data.count))
+        progressHandler?(simulatedSize, Int64(data.count), Int64(data.count))
+
         capturedBody = data
         return try handler(request)
     }

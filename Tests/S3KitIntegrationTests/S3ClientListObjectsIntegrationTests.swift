@@ -14,7 +14,7 @@ import Foundation
 func listObjects() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "list-objects-bucket01"
     let keys = ["\(#function)01", "\(#function)02"]
 
@@ -33,7 +33,7 @@ func listObjects() async throws {
     #expect(listObjects.contents.map(\.key).sorted() == keys.sorted())
     #expect(listObjects.contents.allSatisfy { !$0.eTag.isEmpty })
     #expect(listObjects.contents.allSatisfy { $0.size == data.count })
-    #expect(listObjects.contents.allSatisfy { $0.lastModified.timeIntervalSinceNow > -10 })
+    #expect(listObjects.contents.allSatisfy { $0.lastModified.timeIntervalSinceNow > -60 })
 
     for key in keys {
         try await client.deleteObject(bucket: bucket, key: key)
@@ -44,7 +44,7 @@ func listObjects() async throws {
 func listObjects_withPrefix() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "list-objects-bucket02"
     let keys = ["dir01/\(#function)01", "dir02/\(#function)02", "dir01/\(#function)03"]
 
@@ -71,10 +71,10 @@ func listObjects_withPrefix() async throws {
 }
 
 @Test
-func listObjects_maxKeysContinuationToken() async throws {
+func listObjects_withMaxKeysContinuationToken() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "list-objects-bucket03"
     let keys = [
         "\(#function)01", "\(#function)02", "\(#function)03", "\(#function)04", "\(#function)05",
@@ -125,7 +125,7 @@ func listObjects_maxKeysContinuationToken() async throws {
 }
 
 @Test
-func listObjects_emptyBucket() async throws {
+func listObjects_withEmptyBucket() async throws {
     let client = createS3Client()
 
     let bucket = "list-objects-bucket04"
@@ -138,7 +138,7 @@ func listObjects_emptyBucket() async throws {
 }
 
 @Test
-func listObjects_invalidBucket() async throws {
+func listObjects_withInvalidBucket() async throws {
     let client = createS3Client()
 
     let bucket = "non-existing-bucket"

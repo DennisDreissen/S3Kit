@@ -14,7 +14,7 @@ import Foundation
 func deleteObject() async throws {
     let client = createS3Client()
 
-    let data = randomData(megabytes: 1)
+    let data = testData(kilobytes: 50)
     let bucket = "bucket01"
     let key = #function
     let contentType = "application/pdf"
@@ -38,7 +38,7 @@ func deleteObject() async throws {
 }
 
 @Test
-func deleteObject_invalidBucket() async throws {
+func deleteObject_withInvalidBucket() async throws {
     let client = createS3Client()
 
     let bucket = "non-existing-bucket"

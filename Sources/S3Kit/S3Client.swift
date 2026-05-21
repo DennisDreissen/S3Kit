@@ -35,6 +35,7 @@ public struct S3Client: Sendable {
     /// - Parameters:
     ///   - endpoint: The endpoint URL of the S3 service.
     ///   - region: The region. Not required for all S3-compatible providers.
+    ///   - signerAlgorithm: The algorithm used to sign requests.
     ///   - credentials: The credentials used to sign requests.
     ///   - httpClient: The S3HTTPClient used to execute the requests.
     public init(
@@ -55,6 +56,7 @@ public struct S3Client: Sendable {
     ///
     /// - Parameters:
     ///   - bucket: The name of the bucket.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     @discardableResult
     public func headBucket(
         bucket: String,
@@ -67,7 +69,12 @@ public struct S3Client: Sendable {
         )
 
         let (_, http) = try await executeRequest(request)
-        return S3Response(result: (), headers: http.stringHeaders)
+
+        return S3Response(
+            result: (),
+            statusCode: http.statusCode,
+            headers: http.stringHeaders
+        )
     }
 
     /// Retrieve metadata for an object without downloading its contents.
@@ -75,6 +82,7 @@ public struct S3Client: Sendable {
     /// - Parameters:
     ///   - bucket: The name of the bucket containing the object.
     ///   - key: The key of the object to retrieve metadata for.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     /// - Returns: Metadata for the object.
     public func headObject(
         bucket: String,
@@ -112,6 +120,7 @@ public struct S3Client: Sendable {
                 lastModified: lastModified,
                 contentType: http.value(forHTTPHeaderField: "Content-Type")
             ),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -123,6 +132,7 @@ public struct S3Client: Sendable {
     ///   - prefix: Limits the response to keys that begin with the specified prefix.
     ///   - continuationToken: The token returned by a previous `listObjects` call to retrieve the next page of results.
     ///   - maxKeys: The maximum number of objects to return per page.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     /// - Returns: A response containing the list of objects and a continuation token if more results are available.
     public func listObjects(
         bucket: String,
@@ -152,6 +162,7 @@ public struct S3Client: Sendable {
                 ListObjectsResponse.self,
                 from: data
             ).s3ListObjects,
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -161,6 +172,7 @@ public struct S3Client: Sendable {
     /// - Parameters:
     ///   - bucket: The name of the bucket containing the object.
     ///   - key: The key of the object to retrieve metadata for.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     /// - Returns: The object's content as `Data`.
     public func getObject(
         bucket: String,
@@ -177,6 +189,34 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: data,
+            statusCode: http.statusCode,
+            headers: http.stringHeaders
+        )
+    }
+
+    /// Download an object to the disk.
+    ///
+    /// - Parameters:
+    ///   - bucket: The name of the bucket containing the object.
+    ///   - key: The key of the object to retrieve metadata for.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
+    /// - Returns: The `URL` to where the object has been downloaded.
+    public func downloadObject(
+        bucket: String,
+        key: String,
+        customHeaders: [String: String] = [:]
+    ) async throws -> S3Response<URL> {
+        let request = try createRequest(
+            method: "GET",
+            path: "/\(bucket)/\(key)",
+            headers: sanitize(customHeaders)
+        )
+
+        let (url, http) = try await executeDownloadRequest(request)
+
+        return S3Response(
+            result: url,
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -188,6 +228,7 @@ public struct S3Client: Sendable {
     ///   - bucket: The name of the bucket where the object is uploaded to.
     ///   - key: The key of the object.
     ///   - contentType: A MIME type describing the format of the object data.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     ///   - progressHandler: A callback that reports the upload progress as a Double from 0-1.
     @discardableResult
     public func putObject(
@@ -214,6 +255,7 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: (),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -224,6 +266,7 @@ public struct S3Client: Sendable {
     ///   - bucket: The name of the bucket where the object is uploaded to.
     ///   - key: The key of the object.
     ///   - contentType: A MIME type describing the format of the object data.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     /// - Returns: A string containing the upload ID.
     public func createMultipartUpload(
         bucket: String,
@@ -249,6 +292,7 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: try decode(StartMultipartUploadResponse.self, from: data).uploadId,
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -261,6 +305,7 @@ public struct S3Client: Sendable {
     ///   - key: The key of the object.
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
     ///   - partNumber: Part number of part being uploaded.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     ///   - progressHandler: A callback that reports the upload progress as a Double from 0-1.
     /// - Returns: An object containing the `partNumber` and `eTag` of the uploaded part.  Pass these to `completeMultipartUpload` when all parts are uploaded.
     public func uploadPart(
@@ -301,6 +346,7 @@ public struct S3Client: Sendable {
                 partNumber: partNumber,
                 eTag: eTag
             ),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -313,6 +359,7 @@ public struct S3Client: Sendable {
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
     ///   - partNumberMarker: The marker returned by a previous `listParts` call to retrieve the next page of results.
     ///   - maxParts: The maximum number of parts to return per page.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     /// - Returns: A response containing the list of parts and a part number marker if more results are available.
     public func listParts(
         bucket: String,
@@ -342,6 +389,7 @@ public struct S3Client: Sendable {
                 ListPartsResponse.self,
                 from: data
             ).s3ListParts,
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -353,6 +401,7 @@ public struct S3Client: Sendable {
     ///   - key: The key of the object.
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
     ///   - parts: The list of parts returned by all the `uploadPart` calls.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     @discardableResult
     public func completeMultipartUpload(
         bucket: String,
@@ -386,6 +435,7 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: (),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -396,6 +446,7 @@ public struct S3Client: Sendable {
     ///   - bucket: The name of the bucket where the object is uploaded to.
     ///   - key: The key of the object.
     ///   - uploadId: The upload ID returned by the`createMultipartUpload`.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     @discardableResult
     public func abortMultipartUpload(
         bucket: String,
@@ -416,6 +467,7 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: (),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -427,6 +479,7 @@ public struct S3Client: Sendable {
     ///   - sourceKey: The key of the object to be copied.
     ///   - bucket: The name of the bucket where the object is copied to.
     ///   - key: The key of the copied object.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     @discardableResult
     public func copyObject(
         sourceBucket: String,
@@ -451,6 +504,7 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: (),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -460,6 +514,7 @@ public struct S3Client: Sendable {
     /// - Parameters:
     ///   - bucket: The name of the bucket containing the object.
     ///   - key: The key of the object to retrieve metadata for.
+    ///   - customHeaders: Custom headers passed in the request to the S3 service.
     @discardableResult
     public func deleteObject(
         bucket: String,
@@ -476,6 +531,7 @@ public struct S3Client: Sendable {
 
         return S3Response(
             result: (),
+            statusCode: http.statusCode,
             headers: http.stringHeaders
         )
     }
@@ -558,18 +614,14 @@ private extension S3Client {
     func executeRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, urlResponse) = try await httpClient.data(for: request)
 
-        guard let httpUrlResponse = urlResponse as? HTTPURLResponse else {
-            throw S3Error.invalidResponse
-        }
+        return (data, try httpURLResponse(from: urlResponse, data: data))
+    }
 
-        guard (200..<300).contains(httpUrlResponse.statusCode) else {
-            throw S3Error.responseError(
-                statusCode: httpUrlResponse.statusCode,
-                errorData: try? decode(ErrorDataResponse.self, from: data).s3ErrorData
-            )
-        }
+    @discardableResult
+    func executeDownloadRequest(_ request: URLRequest) async throws -> (URL, HTTPURLResponse) {
+        let (url, urlResponse) = try await httpClient.download(for: request)
 
-        return (data, httpUrlResponse)
+        return (url, try httpURLResponse(from: urlResponse))
     }
 
     @discardableResult
@@ -580,22 +632,12 @@ private extension S3Client {
     ) async throws -> (Data, HTTPURLResponse) {
         let (data, urlResponse) = try await httpClient.upload(
             for: request,
-            from: data,
-            progressHandler: progressHandler
-        )
-
-        guard let httpUrlResponse = urlResponse as? HTTPURLResponse else {
-            throw S3Error.invalidResponse
+            from: data
+        ) { _, totalBytesSent, totalBytesExpectedToSend in
+            progressHandler?(Double(totalBytesSent) / Double(totalBytesExpectedToSend))
         }
 
-        guard (200..<300).contains(httpUrlResponse.statusCode) else {
-            throw S3Error.responseError(
-                statusCode: httpUrlResponse.statusCode,
-                errorData: try? decode(ErrorDataResponse.self, from: data).s3ErrorData
-            )
-        }
-
-        return (data, httpUrlResponse)
+        return (data, try httpURLResponse(from: urlResponse, data: data))
     }
 
     func decode<T: Decodable>(
@@ -632,5 +674,20 @@ private extension S3Client {
         } catch {
             throw S3Error.decodingResponseFailed
         }
+    }
+
+    func httpURLResponse(from urlResponse: URLResponse, data: Data? = nil) throws -> HTTPURLResponse {
+        guard let httpUrlResponse = urlResponse as? HTTPURLResponse else {
+            throw S3Error.invalidResponse
+        }
+
+        guard (200..<300).contains(httpUrlResponse.statusCode) else {
+            throw S3Error.responseError(
+                statusCode: httpUrlResponse.statusCode,
+                errorData: data.flatMap { try? decode(ErrorDataResponse.self, from: $0).s3ErrorData }
+            )
+        }
+
+        return httpUrlResponse
     }
 }

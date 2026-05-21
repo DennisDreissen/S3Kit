@@ -28,7 +28,7 @@ func listObjects() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -62,8 +62,9 @@ func listObjects() async throws {
         key: "image2.jpg",
         eTag: "\"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\"",
         size: 1234567,
-        lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
+        lastModified: iso8601WithoutFractional.date(from: "2026-05-01T18:30:59Z")!
     ))
+    
     #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -95,7 +96,7 @@ func listObjects_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     )
 
@@ -125,12 +126,12 @@ func listObjects_withCustomHeaders() async throws {
         key: "image2.jpg",
         eTag: "\"a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\"",
         size: 1234567,
-        lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
+        lastModified: iso8601WithoutFractional.date(from: "2026-05-01T18:30:59Z")!
     ))
 }
 
 @Test
-func listObjects_validResponseTrunecated() async throws {
+func listObjects_returnsValidResponseTrunecated() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -174,7 +175,7 @@ func listObjects_validResponseTrunecated() async throws {
 }
 
 @Test
-func listObjects_validResponsePrefix() async throws {
+func listObjects_returnsValidResponsePrefix() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -205,7 +206,7 @@ func listObjects_validResponsePrefix() async throws {
 }
 
 @Test
-func listObjects_validResponseContinuationToken() async throws {
+func listObjects_returnsValidResponseContinuationToken() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -236,7 +237,7 @@ func listObjects_validResponseContinuationToken() async throws {
 }
 
 @Test
-func listObjects_validResponseMaxKeys() async throws {
+func listObjects_returnsValidResponseMaxKeys() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -267,7 +268,7 @@ func listObjects_validResponseMaxKeys() async throws {
 }
 
 @Test
-func listObjects_allOptions() async throws {
+func listObjects_returnsAllOptions() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -302,7 +303,7 @@ func listObjects_allOptions() async throws {
 }
 
 @Test
-func listObjects_emptyList() async throws {
+func listObjects_returnsEmptyList() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -337,7 +338,7 @@ func listObjects_emptyList() async throws {
 }
 
 @Test
-func listObjects_invalidStatusCode() async throws {
+func listObjects_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -363,7 +364,7 @@ func listObjects_invalidStatusCode() async throws {
 }
 
 @Test
-func listObjects_invalidResponseMissingETAGXML() async throws {
+func listObjects_returnsInvalidResponseMissingETAGXML() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             listObjectsMissingETAGData,
@@ -389,7 +390,7 @@ func listObjects_invalidResponseMissingETAGXML() async throws {
 }
 
 @Test
-func listObjects_invalidResponseMalformedXML() async throws {
+func listObjects_returnsInvalidResponseMalformedXML() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someData,
@@ -431,7 +432,7 @@ private let listObjectsData = """
         <Key>image2.jpg</Key>
         <ETag>&quot;a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6&quot;</ETag>
         <Size>1234567</Size>
-        <LastModified>2026-05-01T18:30:59.962Z</LastModified>
+        <LastModified>2026-05-01T18:30:59Z</LastModified>
     </Contents>
 </ListBucketResult>
 """.data(using: .utf8)!

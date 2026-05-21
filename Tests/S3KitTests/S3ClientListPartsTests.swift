@@ -28,7 +28,7 @@ func listParts() async throws {
                 statusCode: 200,
                 httpVersion: nil,
                 headerFields: [
-                    "test-header": "test-value",
+                    "test-header": "test-value"
                 ]
             )!
         )
@@ -66,6 +66,7 @@ func listParts() async throws {
         size: 1234567,
         lastModified: iso8601DateFormatter.date(from: "2026-05-01T18:30:59.962Z")!
     ))
+    
     #expect(response.value(forHeaderField: "test-header") == "test-value")
 }
 
@@ -99,7 +100,7 @@ func listParts_withCustomHeaders() async throws {
             "Host": "reserved-header",
             "Content-Length": "reserved-header",
             "x-amz-date": "reserved-header",
-            "x-amz-content-sha256": "reserved-header",
+            "x-amz-content-sha256": "reserved-header"
         ]
     )
 
@@ -134,7 +135,7 @@ func listParts_withCustomHeaders() async throws {
 }
 
 @Test
-func listParts_validResponseTrunecated() async throws {
+func listParts_returnsValidResponseTrunecated() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -180,7 +181,7 @@ func listParts_validResponseTrunecated() async throws {
 }
 
 @Test
-func listParts_validResponseContinuationToken() async throws {
+func listParts_returnsValidResponseContinuationToken() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -213,7 +214,7 @@ func listParts_validResponseContinuationToken() async throws {
 }
 
 @Test
-func listParts_validResponseMaxKeys() async throws {
+func listParts_returnsValidResponseMaxKeys() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -246,7 +247,7 @@ func listParts_validResponseMaxKeys() async throws {
 }
 
 @Test
-func listParts_allOptions() async throws {
+func listParts_returnsAllOptions() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -281,7 +282,7 @@ func listParts_allOptions() async throws {
 }
 
 @Test
-func listParts_emptyList() async throws {
+func listParts_returnsEmptyList() async throws {
     nonisolated(unsafe) var urlRequest: URLRequest!
 
     let httpClient = MockS3HTTPClient { request in
@@ -318,7 +319,7 @@ func listParts_emptyList() async throws {
 }
 
 @Test
-func listParts_invalidStatusCode() async throws {
+func listParts_returnsInvalidStatusCode() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someErrorData,
@@ -346,7 +347,7 @@ func listParts_invalidStatusCode() async throws {
 }
 
 @Test
-func listParts_invalidResponseMissingETAGXML() async throws {
+func listParts_returnsInvalidResponseMissingETAGXML() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             listPartsMissingETAGData,
@@ -374,7 +375,7 @@ func listParts_invalidResponseMissingETAGXML() async throws {
 }
 
 @Test
-func listParts_invalidResponseMalformedXML() async throws {
+func listParts_returnsInvalidResponseMalformedXML() async throws {
     let httpClient = MockS3HTTPClient { request in
         return (
             someData,

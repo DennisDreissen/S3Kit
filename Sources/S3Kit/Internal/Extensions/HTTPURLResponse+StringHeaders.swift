@@ -3,6 +3,7 @@
 //  S3Kit
 //
 //  Created by Dennis Dreissen on 16/05/2026.
+//  Copyright © 2026 Dennis Dreissen
 //
 
 import Foundation

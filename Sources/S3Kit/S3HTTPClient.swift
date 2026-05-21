@@ -14,14 +14,24 @@ import FoundationNetworking
 
 public protocol S3HTTPClient: Sendable {
 
+    typealias ProgressHandler = @Sendable (
+        _ bytesSent: Int64,
+        _ totalBytesSent: Int64,
+        _ totalBytesExpectedToSend: Int64
+    ) -> Void
+
     func data(
         for request: URLRequest
     ) async throws -> (Data, URLResponse)
 
+    func download(
+        for request: URLRequest
+    ) async throws -> (URL, URLResponse)
+
     func upload(
         for request: URLRequest,
         from data: Data,
-        progressHandler: (@Sendable (Double) -> Void)?
+        progressHandler: ProgressHandler?
     ) async throws -> (Data, URLResponse)
 }
 
@@ -48,21 +58,27 @@ public final class S3DefaultHTTPClient: S3HTTPClient, Sendable {
         try await session.data(for: request)
     }
 
+    public func download(
+        for request: URLRequest
+    ) async throws -> (URL, URLResponse) {
+        try await session.download(for: request)
+    }
+
     public func upload(
         for request: URLRequest,
         from data: Data,
-        progressHandler: (@Sendable (Double) -> Void)?
+        progressHandler: ProgressHandler?
     ) async throws -> (Data, URLResponse) {
-        let delegate = progressHandler.map { S3DefaultUploadProgressDelegate(progressHandler: $0) }
+        let delegate = progressHandler.map { S3UploadProgressDelegate(progressHandler: $0) }
         return try await session.upload(for: request, from: data, delegate: delegate)
     }
 }
 
-final class S3DefaultUploadProgressDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+final class S3UploadProgressDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
 
-    let progressHandler: @Sendable (Double) -> Void
+    let progressHandler: S3HTTPClient.ProgressHandler
 
-    init(progressHandler: @escaping @Sendable (Double) -> Void) {
+    init(progressHandler: @escaping S3HTTPClient.ProgressHandler) {
         self.progressHandler = progressHandler
     }
 
@@ -73,10 +89,7 @@ final class S3DefaultUploadProgressDelegate: NSObject, URLSessionTaskDelegate, @
         totalBytesSent: Int64,
         totalBytesExpectedToSend: Int64
     ) {
-        guard totalBytesExpectedToSend > 0 else {
-            return
-        }
-
-        progressHandler(Double(totalBytesSent) / Double(totalBytesExpectedToSend))
+        guard totalBytesExpectedToSend > 0 else { return }
+        progressHandler(bytesSent, totalBytesSent, totalBytesExpectedToSend)
     }
 }
